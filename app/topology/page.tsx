@@ -88,27 +88,7 @@ const nodeTypes = {
 }
 
 /* --- Mock Data Initializer --- */
-const initialNodes: Node[] = [
-  // Core Assets
-  { id: 'ast-1', type: 'asset', position: { x: 400, y: 100 }, data: { id: "AST-002", name: "Web API Gateway", ip: "10.42.1.205" } },
-  { id: 'ast-2', type: 'asset', position: { x: 100, y: 100 }, data: { id: "AST-001", name: "Primary Database Server", ip: "192.168.1.10" } },
-  
-  // Attached Services - API Gateway
-  { id: 'srv-1', type: 'service', position: { x: 300, y: 300 }, data: { label: "HTTPS / API", type: "HTTP", port: 443, risk: 10 } },
-  { id: 'srv-2', type: 'service', position: { x: 500, y: 300 }, data: { label: "Legacy HTTP", type: "Unencrypted", port: 80, risk: 85 } },
-
-  // Attached Services - DB Server
-  { id: 'srv-3', type: 'service', position: { x: 100, y: 300 }, data: { label: "PostgreSQL", type: "Database", port: 5432, risk: 12 } },
-  { id: 'srv-4', type: 'service', position: { x: 250, y: 250 }, data: { label: "Secure Shell", type: "SSH", port: 22, risk: 24 } },
-]
-
-const initialEdges: Edge[] = [
-  { id: 'e-ast1-srv1', source: 'ast-1', target: 'srv-1', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } }, // Secure connection
-  { id: 'e-ast1-srv2', source: 'ast-1', target: 'srv-2', animated: true, style: { stroke: '#ef4444', strokeWidth: 3, strokeDasharray: '5,5' } }, // Risky
-  { id: 'e-ast2-srv3', source: 'ast-2', target: 'srv-3', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
-  { id: 'e-ast2-srv4', source: 'ast-2', target: 'srv-4', animated: true },
-  { id: 'e-ast1-srv4', source: 'ast-1', target: 'srv-4', animated: true }, // Shared SSH connection
-]
+import { initialNodes, initialEdges } from "@/lib/mock-data"
 
 export default function TopologyPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)

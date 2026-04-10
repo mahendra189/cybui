@@ -24,60 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const portsData = [
-  {
-    id: "PRT-443",
-    portNumber: 443,
-    protocol: "TCP",
-    description: "HTTPS securely encrypts web traffic.",
-    severity: 10,
-    assets: [
-      { id: "AST-002", name: "Web API Gateway", ip: "10.42.1.205", lastDetected: "2 mins ago" },
-      { id: "AST-004", name: "Customer Portal Frontend", ip: "10.42.1.210", lastDetected: "45 mins ago" },
-    ],
-  },
-  {
-    id: "PRT-80",
-    portNumber: 80,
-    protocol: "TCP",
-    description: "Unencrypted web traffic, highly discouraged.",
-    severity: 85,
-    assets: [
-      { id: "AST-002", name: "Web API Gateway", ip: "10.42.1.205", lastDetected: "1 hour ago" },
-    ],
-  },
-  {
-    id: "PRT-22",
-    portNumber: 22,
-    protocol: "TCP",
-    description: "SSH Remote Login Protocol.",
-    severity: 45,
-    assets: [
-      { id: "AST-001", name: "Primary Database Server", ip: "192.168.1.10", lastDetected: "Just now" },
-      { id: "AST-005", name: "Data Lake Storage", ip: "192.168.2.55", lastDetected: "3 hours ago" },
-    ],
-  },
-  {
-    id: "PRT-3389",
-    portNumber: 3389,
-    protocol: "TCP",
-    description: "Microsoft Terminal Server (RDP).",
-    severity: 95,
-    assets: [
-      { id: "AST-010", name: "Admin Windows Terminal", ip: "192.168.5.105", lastDetected: "12 mins ago" },
-    ],
-  },
-  {
-    id: "PRT-53",
-    portNumber: 53,
-    protocol: "UDP",
-    description: "Domain Name System (DNS) resolution.",
-    severity: 20,
-    assets: [
-      { id: "AST-006", name: "Internal DNS Resolver", ip: "192.168.1.2", lastDetected: "5 mins ago" },
-    ],
-  },
-]
+import { portsData } from "@/lib/mock-data"
 
 function getSeverityColor(score: number) {
   if (score >= 75) return "text-destructive"

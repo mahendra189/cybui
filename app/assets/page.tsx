@@ -11,43 +11,7 @@ import {
 } from "@/components/ui/table"
 import { ArrowRight } from "lucide-react"
 
-const assets = [
-  {
-    id: "AST-001",
-    name: "Primary Database Server",
-    type: "Server",
-    status: "Active",
-    lastScanned: "2023-11-20 10:30 AM",
-  },
-  {
-    id: "AST-002",
-    name: "Web API Gateway",
-    type: "Gateway",
-    status: "Active",
-    lastScanned: "2023-11-20 09:15 AM",
-  },
-  {
-    id: "AST-003",
-    name: "Legacy Auth Service",
-    type: "Microservice",
-    status: "Inactive",
-    lastScanned: "2023-11-15 14:00 PM",
-  },
-  {
-    id: "AST-004",
-    name: "Customer Portal Frontend",
-    type: "Web Server",
-    status: "Active",
-    lastScanned: "2023-11-20 11:45 AM",
-  },
-  {
-    id: "AST-005",
-    name: "Data Lake Storage",
-    type: "Storage",
-    status: "Warning",
-    lastScanned: "2023-11-19 16:20 PM",
-  },
-]
+import { assets } from "@/lib/mock-data"
 
 export default function AssetsPage() {
   return (

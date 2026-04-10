@@ -16,59 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const servicesData = [
-  {
-    id: "SRV-HTTP",
-    name: "HTTP / Web Server",
-    type: "HTTP",
-    version: "Nginx 1.18.0",
-    riskScore: 68,
-    lastSeen: "2 mins ago",
-    trendData: [40, 50, 45, 60, 50, 68, 68],
-    assets: [
-      { id: "AST-002", name: "Web API Gateway", ip: "10.42.1.205", assetRisk: 82 },
-      { id: "AST-004", name: "Customer Portal Frontend", ip: "10.42.1.210", assetRisk: 54 },
-    ],
-  },
-  {
-    id: "SRV-SSH",
-    name: "Secure Shell",
-    type: "SSH",
-    version: "OpenSSH 8.9p1",
-    riskScore: 24,
-    lastSeen: "14 mins ago",
-    trendData: [20, 22, 24, 24, 24, 24, 24],
-    assets: [
-      { id: "AST-001", name: "Primary Database Server", ip: "192.168.1.10", assetRisk: 14 },
-      { id: "AST-002", name: "Web API Gateway", ip: "10.42.1.205", assetRisk: 30 },
-      { id: "AST-005", name: "Data Lake Storage", ip: "192.168.2.55", assetRisk: 28 },
-    ],
-  },
-  {
-    id: "SRV-PSQL",
-    name: "PostgreSQL Database",
-    type: "Database",
-    version: "PostgreSQL 14.5",
-    riskScore: 12,
-    lastSeen: "Just now",
-    trendData: [15, 12, 12, 12, 10, 12, 12],
-    assets: [
-      { id: "AST-001", name: "Primary Database Server", ip: "192.168.1.10", assetRisk: 12 },
-    ],
-  },
-  {
-    id: "SRV-REDIS",
-    name: "Redis KV Store",
-    type: "Cache",
-    version: "Redis 6.2.6",
-    riskScore: 89,
-    lastSeen: "4 hours ago",
-    trendData: [50, 70, 75, 80, 85, 89, 89],
-    assets: [
-      { id: "AST-003", name: "Legacy Auth Service", ip: "192.168.1.50", assetRisk: 89 },
-    ],
-  },
-]
+import { servicesData } from "@/lib/mock-data"
 
 function getRiskColor(score: number) {
   if (score >= 75) return "text-destructive"

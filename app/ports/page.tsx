@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { portsData, targetsData } from "@/lib/mock-data"
+import { useGlobalData } from "@/app/context/GlobalDataContext"
 
 function getSeverityBg(score: number) {
   if (score >= 75) return "bg-destructive/20 text-destructive border-destructive/20"
@@ -39,6 +39,7 @@ function getSeverityLabel(score: number) {
 }
 
 export default function PortsPage() {
+  const { data } = useGlobalData()
   const [expandedRows, setExpandedRows] = React.useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedTarget, setSelectedTarget] = React.useState("all")
@@ -47,8 +48,20 @@ export default function PortsPage() {
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  const processedPorts = React.useMemo(() => {
+    return data.ports.map(p => ({
+      ...p,
+      id: p._id || p.id || Math.random().toString(),
+      portNumber: p.port || p.portNumber || 0,
+      protocol: p.protocol || 'tcp',
+      description: p.description || p.service || 'Unknown Protocol',
+      severity: p.severity || (p.state === 'open' ? 45 : 10),
+      assets: p.assets || [{ id: 'mock-1', ip: '192.168.1.1', name: 'Unknown Host', lastDetected: 'Recent' }]
+    }))
+  }, [data.ports])
+
   const filteredPorts = React.useMemo(() => {
-    return portsData.filter(
+    return processedPorts.filter(
       (p) => {
         const matchesTarget = selectedTarget === "all" || p.targetId === selectedTarget
         const matchesSearch = p.portNumber.toString().includes(searchQuery) ||
@@ -57,7 +70,7 @@ export default function PortsPage() {
         return matchesTarget && matchesSearch
       }
     )
-  }, [searchQuery, selectedTarget])
+  }, [processedPorts, searchQuery, selectedTarget])
 
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
@@ -75,8 +88,8 @@ export default function PortsPage() {
             onChange={(e) => setSelectedTarget(e.target.value)}
           >
             <option value="all">Global View (All Targets)</option>
-            {targetsData.map(t => (
-              <option key={t.id} value={t.id}>{t.organizationName}</option>
+            {data.targets.map(t => (
+              <option key={t._id || t.id} value={t._id || t.id}>{t.organizationName || t.name}</option>
             ))}
           </select>
           <div className="relative w-full md:w-64">
@@ -146,7 +159,7 @@ export default function PortsPage() {
                     </TableCell>
                     <TableCell className="text-center" onClick={() => toggleRow(portInfo.id)}>
                       <Badge variant="secondary" className="px-2 py-0.5 pointer-events-none font-bold">
-                        {portInfo.assets.length}
+                        {portInfo.assets?.length || 0}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -182,7 +195,7 @@ export default function PortsPage() {
                           <div className="rounded-lg border bg-background overflow-hidden shadow-sm">
                             <div className="bg-muted/30 px-4 py-2 border-b flex justify-between items-center text-xs text-muted-foreground font-medium uppercase tracking-wider">
                               <span>Asset Details</span>
-                              <span>Total: {portInfo.assets.lastDetected}</span>
+                              <span>Total: {(portInfo.assets || []).length}</span>
                             </div>
                             <table className="w-full text-sm">
                               <thead className="bg-muted/20 text-muted-foreground text-xs uppercase">
@@ -194,7 +207,7 @@ export default function PortsPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y border-t-0">
-                                {portInfo.assets.map((asset) => (
+                                {portInfo.assets?.map((asset: any) => (
                                   <tr key={asset.id} className="hover:bg-muted/40 transition-colors">
                                     <td className="px-4 py-3">
                                       <Link href={`/assets/${asset.id}`} className="font-mono text-xs text-primary hover:underline font-medium flex items-center gap-2">

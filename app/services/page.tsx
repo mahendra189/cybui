@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { Progress } from "@/components/ui/progress"
 
-import { servicesData, targetsData } from "@/lib/mock-data"
+import { useGlobalData } from "@/app/context/GlobalDataContext"
 
 function getRiskColor(score: number) {
   if (score >= 75) return "text-destructive"
@@ -31,8 +31,8 @@ function getRiskBg(score: number) {
   return "bg-emerald-500/20"
 }
 
-// Inline SVG sparkline to avoid heavy chart dependencies
 function Sparkline({ data, score }: { data: number[], score: number }) {
+  if (!data || data.length === 0) return null;
   const max = Math.max(...data, 100);
   const min = 0;
   const range = max - min;
@@ -55,6 +55,7 @@ function Sparkline({ data, score }: { data: number[], score: number }) {
 }
 
 export default function ServicesPage() {
+  const { data } = useGlobalData()
   const [expandedRows, setExpandedRows] = React.useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = React.useState("")
   const [selectedTarget, setSelectedTarget] = React.useState("all")
@@ -63,8 +64,23 @@ export default function ServicesPage() {
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  // Gracefully map the MongoDB data schema back into the robust UI mock schema
+  const processedServices = React.useMemo(() => {
+    return data.services.map(s => ({
+      ...s,
+      id: s._id || s.id || Math.random().toString(),
+      name: s.name || 'Unknown',
+      type: s.type || 'Service',
+      version: s.version || 'unknown',
+      riskScore: s.riskScore || 20,
+      trendData: s.trendData || [20, 20, 20, 20, 20],
+      lastSeen: s.lastSeen || 'Recently',
+      assets: s.assets || (s.runningOn ? [{ id: s.runningOn, ip: '10.0.0.x', name: s.runningOn, assetRisk: 20 }] : [])
+    }))
+  }, [data.services])
+
   const filteredServices = React.useMemo(() => {
-    return servicesData.filter(
+    return processedServices.filter(
       (s) => {
         const matchesTarget = selectedTarget === "all" || s.targetId === selectedTarget
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -73,7 +89,7 @@ export default function ServicesPage() {
         return matchesTarget && matchesSearch
       }
     )
-  }, [searchQuery, selectedTarget])
+  }, [processedServices, searchQuery, selectedTarget])
 
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
@@ -91,8 +107,8 @@ export default function ServicesPage() {
             onChange={(e) => setSelectedTarget(e.target.value)}
           >
             <option value="all">Global View (All Targets)</option>
-            {targetsData.map(t => (
-              <option key={t.id} value={t.id}>{t.organizationName}</option>
+            {data.targets.map(t => (
+              <option key={t._id || t.id} value={t._id || t.id}>{t.organizationName || t.name}</option>
             ))}
           </select>
           <div className="relative w-full md:w-64">
@@ -195,7 +211,7 @@ export default function ServicesPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y">
-                                {service.assets.map((asset) => (
+                                {service.assets.map((asset: any) => (
                                   <tr key={asset.id} className="hover:bg-muted/60 transition-colors">
                                     <td className="px-4 py-3">
                                       <Link href={`/assets/${asset.id}`} className="font-mono text-xs text-primary hover:underline font-medium flex items-center gap-2">

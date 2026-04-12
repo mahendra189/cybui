@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
+export const maxDuration = 900; // Increased to 15 minutes for long-running pipeline scans
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
@@ -28,12 +31,16 @@ export async function POST(request: Request) {
     console.log(`>>> PROXYING AGENT SCAN FOR DOMAIN: [${targetDomain}] (TargetID: ${targetId})`);
 
     // Query the external agent backend using the new pipeline endpoint
+    // We use a very long timeout (15 minutes) to allow the backend to complete its scan.
+    // The UND_ERR_HEADERS_TIMEOUT error often happens when the connection is closed 
+    // by the environment (e.g. 5 min limit) before headers are received.
     const agentResponse = await fetch("http://127.0.0.1:8000/api/scan_domain_pipeline", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({ domain: targetDomain })
+      body: JSON.stringify({ domain: targetDomain }),
+      signal: AbortSignal.timeout(900000) // 15 minutes timeout
     });
     
     if (!agentResponse.ok) {
@@ -44,26 +51,66 @@ export async function POST(request: Request) {
     
     console.log("--- AGENT PIPELINE RESPONSE RECEIVED ---");
 
+    // Clear existing data for this target to ensure a clean "update"
+    // This prevents duplicate findings and stale data from appearing in the dashboard.
+    console.log(`>>> Cleaning up old records for TargetID: [${targetId}]`);
+    await db.collection('assets').deleteMany({ targetId });
+    await db.collection('ports').deleteMany({ targetId });
+    await db.collection('services').deleteMany({ targetId });
+
     // Update the backend database matching schemas...
     let insertedAssets = 0;
     let insertedPorts = 0;
     let insertedServices = 0;
     let topologyUpdated = false;
 
-    // We can clear old data for this target or just append
-    // Given the pipeline provides a fresh view, we might want to update or upsert.
-    // For now, let's follow the previous pattern of inserting but with better structured data.
-
+    // 1. Process Assets
     if (parsedData?.assets && Array.isArray(parsedData.assets)) {
-      const assetsToInsert = parsedData.assets.map((a: any) => ({ ...a, targetId, lastScanned: new Date() }));
-      // Use upsert or clear-and-insert for better UX. Let's stick to insertion for now as requested.
+      const assetsToInsert = parsedData.assets.map((a: any) => ({ 
+        ...a, 
+        targetId, 
+        lastScanned: new Date(),
+        status: a.status || 'Active'
+      }));
       if (assetsToInsert.length > 0) {
         await db.collection('assets').insertMany(assetsToInsert);
         insertedAssets = assetsToInsert.length;
       }
+
+      // If ports/services aren't at top level, try to extract them from assets
+      if (!parsedData.ports || !Array.isArray(parsedData.ports)) {
+        const extractedPorts: any[] = [];
+        parsedData.assets.forEach((a: any) => {
+          if (a.ports && Array.isArray(a.ports)) {
+            a.ports.forEach((p: any) => {
+              extractedPorts.push({ ...p, targetId, hostIp: a.ip || a.internalIp || "Unknown" });
+            });
+          }
+        });
+        if (extractedPorts.length > 0) {
+            await db.collection('ports').insertMany(extractedPorts);
+            insertedPorts = extractedPorts.length;
+        }
+      }
+
+      if (!parsedData.services || !Array.isArray(parsedData.services)) {
+        const extractedServices: any[] = [];
+        parsedData.assets.forEach((a: any) => {
+          if (a.services && Array.isArray(a.services)) {
+            a.services.forEach((s: any) => {
+              extractedServices.push({ ...s, targetId, lastSeen: new Date() });
+            });
+          }
+        });
+        if (extractedServices.length > 0) {
+            await db.collection('services').insertMany(extractedServices);
+            insertedServices = extractedServices.length;
+        }
+      }
     }
     
-    if (parsedData?.ports && Array.isArray(parsedData.ports)) {
+    // 2. Process Top-level Ports (if provided)
+    if (parsedData?.ports && Array.isArray(parsedData.ports) && insertedPorts === 0) {
       const portsToInsert = parsedData.ports.map((p: any) => ({ ...p, targetId }));
       if (portsToInsert.length > 0) {
         await db.collection('ports').insertMany(portsToInsert);
@@ -71,7 +118,8 @@ export async function POST(request: Request) {
       }
     }
     
-    if (parsedData?.services && Array.isArray(parsedData.services)) {
+    // 3. Process Top-level Services (if provided)
+    if (parsedData?.services && Array.isArray(parsedData.services) && insertedServices === 0) {
       const servicesToInsert = parsedData.services.map((s: any) => ({ ...s, targetId }));
       if (servicesToInsert.length > 0) {
         await db.collection('services').insertMany(servicesToInsert);
@@ -90,7 +138,7 @@ export async function POST(request: Request) {
       topologyUpdated = true;
     }
 
-    // Update targets status if needed
+    // Update targets status
     if (parsedData?.targets && Array.isArray(parsedData.targets)) {
         for (const t of parsedData.targets) {
             await db.collection('targets').updateOne(
@@ -99,6 +147,12 @@ export async function POST(request: Request) {
                 { upsert: true }
             );
         }
+    } else {
+        // Fallback: update the current target status to Idle
+        await db.collection('targets').updateOne(
+            { id: targetId },
+            { $set: { status: 'Idle', lastCompletedScan: new Date() } }
+        );
     }
 
     return NextResponse.json(
@@ -113,7 +167,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Agent pipeline execution failed:", error);
     return NextResponse.json(
-      { error: 'Failed to process pipeline scan' },
+      { error: error.name === 'AbortError' ? 'Scan timed out' : 'Failed to process pipeline scan' },
       { status: 500 }
     );
   }

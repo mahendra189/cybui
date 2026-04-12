@@ -26,6 +26,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useGlobalData } from "@/app/context/GlobalDataContext"
 import { Play } from "next/font/google"
 
+import { Progress } from "@/components/ui/progress"
+
 export default function TargetDetailPage() {
   const params = useParams()
   const targetId = params.id as string
@@ -41,6 +43,34 @@ export default function TargetDetailPage() {
   ]);
   const [chatInput, setChatInput] = React.useState("");
   const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Scan status and progress
+  const [isScanning, setIsScanning] = React.useState(false);
+  const [scanElapsed, setScanElapsed] = React.useState(0);
+  const [simulatedProgress, setSimulatedProgress] = React.useState(0);
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isScanning) {
+      const startTime = Date.now();
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setScanElapsed(elapsed);
+
+        // Simulated progress: fast at first, then slow, capped at 99%
+        setSimulatedProgress(prev => {
+          if (prev < 30) return prev + 1;
+          if (prev < 70) return prev + 0.5;
+          if (prev < 99) return prev + 0.1;
+          return prev;
+        });
+      }, 1000);
+    } else {
+      setScanElapsed(0);
+      setSimulatedProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [isScanning]);
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -60,9 +90,10 @@ export default function TargetDetailPage() {
     setChatMessages(prev => [
       ...prev,
       { role: 'agent', content: `Acknowledged command. Forwarding instructions to external agent...`, type: 'log' },
-      { role: 'agent', content: `Running Subfinder, HTTPX, and NMap for deep network mapping. Please wait...`, type: 'log' }
+      { role: 'agent', content: `Running Subfinder, Amass, and Pipeline tools for deep mapping. Please wait...`, type: 'log' }
     ]);
 
+    setIsScanning(true);
     try {
       const resp = await fetch('/api/agent/scan', {
         method: 'POST',
@@ -73,7 +104,7 @@ export default function TargetDetailPage() {
       if (resp.ok) {
         const result = await resp.json();
         console.log("Agent Scan Result Stats:", result.stats);
-        
+
         if (result.rawText) {
           // Display the agent's refusal or conversational text
           setChatMessages(prev => [
@@ -95,6 +126,8 @@ export default function TargetDetailPage() {
       }
     } catch (e) {
       setChatMessages(prev => [...prev, { role: 'agent', content: "Network error trying to engage agent.", type: "log" }]);
+    } finally {
+      setIsScanning(false);
     }
   }
 
@@ -106,6 +139,7 @@ export default function TargetDetailPage() {
       { role: 'agent', content: `Acknowledged. Engaging AI pipeline for full target scan...`, type: 'log' }
     ]);
 
+    setIsScanning(true);
     try {
       const resp = await fetch('/api/agent/scan', {
         method: 'POST',
@@ -124,6 +158,8 @@ export default function TargetDetailPage() {
       }
     } catch {
       setChatMessages(prev => [...prev, { role: 'agent', content: "Failed to reach AI pipeline.", type: "log" }]);
+    } finally {
+      setIsScanning(false);
     }
   }
 
@@ -191,7 +227,6 @@ export default function TargetDetailPage() {
             </Link>
           </Button>
         </div>
-
         {/* Live Counter Dashboard */}
         <div className="flex gap-3 overflow-x-auto pb-2 md:pb-0">
           <div className="flex flex-col justify-center items-center px-6 py-2 bg-muted/30 border rounded-lg min-w mt-2">
@@ -208,6 +243,38 @@ export default function TargetDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* 1.1 Live Scanning Progress (Only visible during scan) */}
+      {isScanning && (
+        <div className="bg-card/50 backdrop-blur border border-primary/20 rounded-lg p-5 shadow-inner animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </div>
+              <p className="text-sm font-semibold tracking-tight uppercase">AI Reconnaissance Pipeline in Progress...</p>
+            </div>
+            <div className="flex items-center gap-6 font-mono text-sm bg-background/50 px-4 py-1.5 rounded-full border border-muted shadow-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="size-4 text-primary animate-pulse" />
+                <span className="text-muted-foreground">Elapsed:</span>
+                <span className="font-bold text-foreground w-12 text-right">{Math.floor(scanElapsed / 60)}:{String(scanElapsed % 60).padStart(2, '0')}</span>
+              </div>
+              <div className="h-4 w-px bg-muted px-0" />
+              <div className="flex items-center gap-2">
+                <Activity className="size-4 text-emerald-500" />
+                <span className="text-muted-foreground text-xs uppercase font-bold tracking-widest">Active</span>
+              </div>
+            </div>
+          </div>
+          <Progress value={simulatedProgress} className="h-2 bg-muted shadow-inner" />
+          <div className="flex justify-between mt-2">
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Engaging: Subfinder / Amass / HTTPX / Wayback</p>
+            <p className="text-[10px] text-primary font-bold uppercase tracking-tighter animate-pulse">{Math.round(simulatedProgress)}% Processed</p>
+          </div>
+        </div>
+      )}
 
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
@@ -302,13 +369,13 @@ export default function TargetDetailPage() {
         </div>
 
         {/* Right Column: Interactive Agent Terminal */}
-        <div className="flex flex-col h-[600px] lg:h-full bg-zinc-950 border-zinc-800 border rounded-lg shadow-xl overflow-hidden text-zinc-100 flex-1">
-          <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800">
+        <div className="flex flex-col h-[600px] lg:h-full bg-card border rounded-lg shadow-xl overflow-hidden text-foreground flex-1">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
             <div className="flex items-center gap-2">
               <Bot className="size-5 text-primary" />
-              <h3 className="font-semibold text-sm tracking-tight text-white">Agent Operations Console</h3>
+              <h3 className="font-semibold text-sm tracking-tight">Agent Operations Console</h3>
             </div>
-            <Badge variant="secondary" className="bg-zinc-800 text-zinc-300 border-zinc-700 text-[10px] font-mono">Live Session</Badge>
+            <Badge variant="secondary" className="bg-muted text-muted-foreground border-border text-[10px] font-mono">Live Session</Badge>
           </div>
 
           {/* Feed List */}
@@ -319,20 +386,20 @@ export default function TargetDetailPage() {
             {chatMessages.map((msg, i) => (
               <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                 {msg.role === 'agent' && (
-                  <div className={`mt-1 shrink-0 size-6 rounded flex items-center justify-center ${msg.type === 'log' ? 'bg-zinc-800 text-zinc-400' : 'bg-primary/20 text-primary border border-primary/30'}`}>
+                  <div className={`mt-1 shrink-0 size-6 rounded flex items-center justify-center ${msg.type === 'log' ? 'bg-muted text-muted-foreground' : 'bg-primary/20 text-primary border border-primary/30'}`}>
                     {msg.type === 'log' ? <Terminal className="size-3" /> : <Bot className="size-3" />}
                   </div>
                 )}
                 <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : ''} max-w-[85%]`}>
-                  {msg.role === 'agent' && <span className="text-[10px] text-zinc-500 mb-1">{msg.type === 'log' ? 'SYSTEM PROCESS' : 'AGENT REPLY'}</span>}
+                  {msg.role === 'agent' && <span className="text-[10px] text-muted-foreground mb-1">{msg.type === 'log' ? 'SYSTEM PROCESS' : 'AGENT REPLY'}</span>}
 
                   <div className={`
                     px-3 py-2 rounded-lg 
                     ${msg.role === 'user'
                       ? 'bg-primary text-primary-foreground font-sans text-sm shadow-md'
                       : msg.type === 'log'
-                        ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs'
-                        : 'bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm font-sans'
+                        ? 'bg-muted/50 border border-muted text-muted-foreground text-xs'
+                        : 'bg-muted border border-border text-foreground text-sm font-sans'
                     }
                   `}>
                     {msg.type === 'log' && <span className="text-emerald-500 mr-2">➜</span>}
@@ -343,36 +410,36 @@ export default function TargetDetailPage() {
             ))}
             {/* Pulsing indicator for active agent */}
             <div className="flex gap-3 opacity-50">
-              <div className="mt-1 shrink-0 size-6 rounded bg-zinc-800 text-zinc-400 flex items-center justify-center animate-pulse">
+              <div className="mt-1 shrink-0 size-6 rounded bg-muted text-muted-foreground flex items-center justify-center animate-pulse">
                 <Terminal className="size-3" />
               </div>
-              <div className="px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs w-2/3">
+              <div className="px-3 py-2 rounded-lg bg-muted/50 border border-muted text-muted-foreground text-xs w-2/3">
                 <span className="text-emerald-500 mr-2 animate-pulse">_</span>
               </div>
             </div>
           </div>
 
           {/* Chat Input */}
-          <div className="p-3 bg-zinc-900 border-t border-zinc-800">
+          <div className="p-3 bg-muted/30 border-t">
             <form onSubmit={handleSendMessage} className="relative flex items-center">
-              <Terminal className="absolute left-3 size-4 text-zinc-500" />
+              <Terminal className="absolute left-3 size-4 text-muted-foreground" />
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Instruct agent (e.g. 'Re-scan open ports')"
-                className="w-full bg-zinc-950 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 pl-9 pr-12 focus-visible:ring-primary focus-visible:ring-1 focus-visible:border-primary shadow-inner"
+                className="w-full bg-background border-muted text-foreground placeholder:text-muted-foreground/50 pl-9 pr-12 focus-visible:ring-primary focus-visible:ring-1 focus-visible:border-primary shadow-inner"
               />
               <Button
                 type="submit"
                 size="icon"
                 variant="ghost"
-                className="absolute right-1 size-8 hover:bg-zinc-800 hover:text-white text-zinc-400"
+                className="absolute right-1 size-8 hover:bg-muted hover:text-foreground text-muted-foreground"
                 disabled={!chatInput.trim()}
               >
                 <Send className="size-4" />
               </Button>
             </form>
-            <p className="text-[10px] text-center text-zinc-500 mt-2 font-sans">Everything updates dynamically. Chat & Log streams synced.</p>
+            <p className="text-[10px] text-center text-muted-foreground mt-2 font-sans">Everything updates dynamically. Chat & Log streams synced.</p>
           </div>
         </div>
 

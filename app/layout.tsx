@@ -15,6 +15,8 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+import { AuthProvider } from "@/components/auth-provider"
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,9 +29,11 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
+        <AuthProvider>
         <GlobalDataProvider>
           <ThemeProvider>
             <TooltipProvider>
+              {/* Note: The Sidebar logic will handle its own visibility or we can wrap conditional logic here if it were a client component */}
               <SidebarProvider>
                 <AppSidebar />
               <SidebarInset>
@@ -46,6 +50,7 @@ export default function RootLayout({
           </TooltipProvider>
         </ThemeProvider>
         </GlobalDataProvider>
+        </AuthProvider>
       </body>
     </html>
   )

@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import {
   BookOpen,
   Bot,
@@ -9,7 +11,8 @@ import {
   SquareTerminal,
   Network,
   Target,
-  Shield
+  Shield,
+  User
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -24,18 +27,13 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
-const data = {
-  user: {
-    name: "cyb",
-    email: "cyb@gmail.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
+// Modern navigation data
+const navData = {
   teams: [
     {
       name: "CYB",
       logo: Shield,
-      plan: "Security",
+      plan: "Security Intelligence",
     },
   ],
   navMain: [
@@ -71,20 +69,34 @@ const data = {
       icon: Settings2,
     },
   ],
-  projects: [],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession()
+  const pathname = usePathname()
+
+  // Hide sidebar on auth pages
+  const isAuthPage = pathname === "/login" || pathname === "/register"
+  if (isAuthPage) return null
+
+  const userData = {
+    name: session?.user?.name || "Initializing...",
+    email: session?.user?.email || "",
+    avatar: "",
+    // @ts-ignore
+    role: session?.user?.role || "customer"
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher teams={navData.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navData.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userData} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

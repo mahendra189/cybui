@@ -27,8 +27,10 @@ import { useGlobalData } from "@/app/context/GlobalDataContext"
 import { Play } from "next/font/google"
 
 import { Progress } from "@/components/ui/progress"
+import { useSession } from "next-auth/react"
 
 export default function TargetDetailPage() {
+  const { data: session } = useSession()
   const params = useParams()
   const targetId = params.id as string
   const { data, refreshData } = useGlobalData()
@@ -218,9 +220,11 @@ export default function TargetDetailPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button onClick={handleRunRecon} className="gap-2 bg-primary hover:bg-primary/90">
-            <PlayIcon className="size-4" /> Launch OSINT Reconnaissance
-          </Button>
+          {session?.user?.role !== "customer" && (
+            <Button onClick={handleRunRecon} className="gap-2 bg-primary hover:bg-primary/90">
+              <PlayIcon className="size-4" /> Launch OSINT Reconnaissance
+            </Button>
+          )}
           <Button variant="outline" className="gap-2 hidden md:flex" asChild>
             <Link href="/assets">
               <Server className="size-4" /> View Asset Logs

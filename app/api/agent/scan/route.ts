@@ -1,12 +1,25 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { auth } from "@/lib/auth";
 
 export const maxDuration = 900; // Increased to 15 minutes for long-running pipeline scans
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // @ts-ignore
+    const userRole = session.user.role;
+    if (userRole === "customer") {
+      return NextResponse.json({ error: "Insufficient permissions. Customers cannot initiate scans." }, { status: 403 });
+    }
+
     const payload = await request.json();
     const targetId = payload.targetId || "TGT-UNKNOWN";
 

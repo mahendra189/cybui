@@ -336,10 +336,10 @@ export default function TargetDetailPage() {
                   {targetAssets.map((asset, i) => (
                     <div key={i} className="flex flex-col p-4 bg-background border rounded-lg shadow-sm hover:border-primary/50 transition-colors">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm tracking-tight">{asset.deviceName || asset.name || `host-${i}.${target.primaryDomain}`}</span>
+                        <span className="font-semibold text-sm tracking-tight">{asset.subdomain || asset.deviceName || asset.name || `host-${i}.${target.primaryDomain}`}</span>
                         <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]">Alive</Badge>
                       </div>
-                      <span className="font-mono text-xs text-muted-foreground mb-3">{asset.ip || asset.internalIp || "Pending..."}</span>
+                      <span className="font-mono text-xs text-muted-foreground mb-3">{asset.ip || "Pending..."}</span>
                       <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground pt-3 border-t">
                         <CornerDownRight className="size-3" /> Source: AI Agent Scan
                       </div>
@@ -367,7 +367,14 @@ export default function TargetDetailPage() {
                     <tbody className="divide-y">
                       {targetPorts.map((port, i) => (
                         <tr key={i} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3 font-mono text-xs">{port.hostIp || "N/A"}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-1">
+                              {port.assets?.slice(0, 2).map((a: any, idx: number) => (
+                                <Badge key={idx} variant="secondary" className="text-[10px] py-0">{a.name}</Badge>
+                              )) || "N/A"}
+                              {(port.assets?.length || 0) > 2 && <Badge variant="outline" className="text-[10px] py-0">+{port.assets.length - 2} more</Badge>}
+                            </div>
+                          </td>
                           <td className="px-4 py-3 font-bold">{port.portNumber || port.port} <span className="text-xs font-normal text-muted-foreground uppercase ml-1">{port.protocol}</span></td>
                           <td className="px-4 py-3 font-medium">{port.service || port.description || "Unidentified"}</td>
                           <td className="px-4 py-3 text-right">
@@ -402,8 +409,8 @@ export default function TargetDetailPage() {
                       {targetServices.map((service, i) => (
                         <tr key={i} className="hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 font-bold">{service.name}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{service.port}/{service.protocol}</td>
-                          <td className="px-4 py-3">{service.version || "Unknown"}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{service.port}/{service.protocol} ({service.assets?.length || 0} Assets)</td>
+                          <td className="px-4 py-3">{service.version || "Detected"}</td>
                           <td className="px-4 py-3 text-right">
                              <Badge className="bg-primary/10 text-primary border-primary/20">{service.riskScore || "Low"}</Badge>
                           </td>

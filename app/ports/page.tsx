@@ -56,7 +56,7 @@ export default function PortsPage() {
       protocol: p.protocol || 'tcp',
       description: p.description || p.service || 'Unknown Protocol',
       severity: p.severity || (p.state === 'open' ? 45 : 10),
-      assets: p.assets || [{ id: 'mock-1', ip: '192.168.1.1', name: 'Unknown Host', lastDetected: 'Recent' }]
+      assets: p.assets || []
     }))
   }, [data.ports])
 

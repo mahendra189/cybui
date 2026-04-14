@@ -75,7 +75,7 @@ export default function ServicesPage() {
       riskScore: s.riskScore || 20,
       trendData: s.trendData || [20, 20, 20, 20, 20],
       lastSeen: s.lastSeen || 'Recently',
-      assets: s.assets || (s.runningOn ? [{ id: s.runningOn, ip: '10.0.0.x', name: s.runningOn, assetRisk: 20 }] : [])
+      assets: s.assets || []
     }))
   }, [data.services])
 

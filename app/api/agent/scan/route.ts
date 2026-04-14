@@ -6,6 +6,35 @@ import { auth } from "@/lib/auth";
 export const maxDuration = 900; // Increased to 15 minutes for long-running pipeline scans
 export const dynamic = 'force-dynamic';
 
+const COMMON_PORTS: Record<number, string> = {
+  21: "FTP",
+  22: "SSH",
+  23: "Telnet",
+  25: "SMTP",
+  53: "DNS",
+  80: "HTTP",
+  110: "POP3",
+  111: "RPCBind",
+  135: "MSRPC",
+  139: "NetBIOS",
+  143: "IMAP",
+  443: "HTTPS",
+  445: "Microsoft-DS",
+  993: "IMAPS",
+  995: "POP3S",
+  1723: "PPTP",
+  3306: "MySQL",
+  3389: "RDP",
+  5432: "PostgreSQL",
+  5900: "VNC",
+  6379: "Redis",
+  8000: "HTTP-Alt",
+  8080: "HTTP-Proxy",
+  8443: "HTTPS-Alt",
+  9000: "Portainer",
+  27017: "MongoDB"
+};
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -76,79 +105,85 @@ export async function POST(request: Request) {
     let topologyUpdated = false;
 
     // 1. Process Assets
+    let assetsToInsert: any[] = [];
     if (parsedData?.assets && Array.isArray(parsedData.assets)) {
-      const assetsToInsert = parsedData.assets.map((a: any) => ({
-        ...a,
+      assetsToInsert = parsedData.assets.map((a: any) => ({
         targetId,
+        subdomain: a.subdomain,
+        name: a.subdomain || "Unknown Asset",
+        status: 'Active',
         lastScanned: new Date(),
-        status: a.status || 'Active'
+        ip: a.ip || "Pending..."
       }));
+      
       if (assetsToInsert.length > 0) {
         await db.collection('assets').insertMany(assetsToInsert);
         insertedAssets = assetsToInsert.length;
       }
 
-      // If ports/services aren't at top level, try to extract them from assets
-      // We look for 'ports', 'exposedServices', or 'services' inside each asset
-      const extractedPorts: any[] = [];
-      const extractedServices: any[] = [];
+      // Grouping logic for Ports and Services
+      const portGroups: Record<number, any> = {};
+      const serviceGroups: Record<string, any> = {};
 
       parsedData.assets.forEach((a: any) => {
-        // Try to find ports in various common schemas
-        const portsList = a.ports || a.exposedServices || a.services;
-        if (portsList && Array.isArray(portsList)) {
-          portsList.forEach((p: any) => {
-            // Normalize port data
-            const portData = {
-              ...p,
-              targetId,
-              hostIp: a.ip || a.internalIp || p.hostIp || "Unknown",
-              portNumber: p.portNumber || p.port,
-              service: p.service || p.serviceName || p.description || "Unknown",
-              protocol: p.protocol || "TCP",
-              state: p.state || "open"
-            };
-            extractedPorts.push(portData);
+        if (a.ports && Array.isArray(a.ports)) {
+          a.ports.forEach((portNumber: number) => {
+            const serviceName = COMMON_PORTS[portNumber] || "Unknown Service";
+            
+            // Group for Ports collection
+            if (!portGroups[portNumber]) {
+              portGroups[portNumber] = {
+                targetId,
+                portNumber,
+                protocol: "TCP",
+                service: serviceName,
+                description: `${serviceName} protocol on port ${portNumber}`,
+                state: "open",
+                assets: []
+              };
+            }
+            portGroups[portNumber].assets.push({
+              id: a.subdomain,
+              name: a.subdomain,
+              ip: a.ip || "Pending...",
+              lastDetected: new Date().toISOString()
+            });
 
-            // Also create a service entry if it looks like a service
-            extractedServices.push({
-              targetId,
-              name: portData.service,
-              port: portData.portNumber,
-              protocol: portData.protocol,
-              lastSeen: new Date(),
-              assetId: a.id || a._id || null
+            // Group for Services collection
+            if (!serviceGroups[serviceName]) {
+              serviceGroups[serviceName] = {
+                targetId,
+                name: serviceName,
+                type: serviceName,
+                port: portNumber,
+                protocol: "TCP",
+                version: "Detected",
+                riskScore: portNumber === 80 ? 85 : 20, // Example risk score
+                lastSeen: new Date(),
+                assets: []
+              };
+            }
+            serviceGroups[serviceName].assets.push({
+              id: a.subdomain,
+              name: a.subdomain,
+              ip: a.ip || "Pending...",
+              assetRisk: 20
             });
           });
         }
       });
 
-      if (extractedPorts.length > 0 && (!parsedData.ports || !Array.isArray(parsedData.ports))) {
-        await db.collection('ports').insertMany(extractedPorts);
-        insertedPorts = extractedPorts.length;
+      const finalPorts = Object.values(portGroups);
+      const finalServices = Object.values(serviceGroups);
+
+      if (finalPorts.length > 0) {
+        await db.collection('ports').insertMany(finalPorts);
+        insertedPorts = finalPorts.length;
       }
 
-      if (extractedServices.length > 0 && (!parsedData.services || !Array.isArray(parsedData.services))) {
-        await db.collection('services').insertMany(extractedServices);
-        insertedServices = extractedServices.length;
-      }
-    }
-
-    // 2. Process Top-level Ports (if provided and we haven't already extracted from assets)
-    if (parsedData?.ports && Array.isArray(parsedData.ports) && insertedPorts === 0) {
-      const portsToInsert = parsedData.ports.map((p: any) => ({ ...p, targetId }));
-      if (portsToInsert.length > 0) {
-        await db.collection('ports').insertMany(portsToInsert);
-        insertedPorts = portsToInsert.length;
-      }
-    }
-
-    // 3. Process Top-level Services (if provided and we haven't already extracted from assets)
-    if (parsedData?.services && Array.isArray(parsedData.services) && insertedServices === 0) {
-      const servicesToInsert = parsedData.services.map((s: any) => ({ ...s, targetId }));
-      if (servicesToInsert.length > 0) {
-        await db.collection('services').insertMany(servicesToInsert);
-        insertedServices = servicesToInsert.length;
+      if (finalServices.length > 0) {
+        await db.collection('services').insertMany(finalServices);
+        insertedServices = finalServices.length;
       }
     }
 

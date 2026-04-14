@@ -379,16 +379,22 @@ export default function TargetDetailPage() {
               <TabsContent value="subdomains" className="m-0 h-full">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {targetAssets.map((asset, i) => (
-                    <div key={i} className="flex flex-col p-4 bg-background border rounded-lg shadow-sm hover:border-primary/50 transition-colors">
+                    <Link 
+                      key={i} 
+                      href={`/assets/${asset._id || asset.id}`}
+                      className="flex flex-col p-4 bg-background border rounded-lg shadow-sm hover:border-primary/50 hover:shadow-md transition-all group"
+                    >
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm tracking-tight">{asset.subdomain || asset.deviceName || asset.name || `host-${i}.${target.primaryDomain}`}</span>
+                        <span className="font-semibold text-sm tracking-tight group-hover:text-primary transition-colors">
+                          {asset.subdomain || asset.deviceName || asset.name || `host-${i}.${target.primaryDomain}`}
+                        </span>
                         <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]">Alive</Badge>
                       </div>
                       <span className="font-mono text-xs text-muted-foreground mb-3">{asset.ip || "Pending..."}</span>
                       <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground pt-3 border-t">
                         <CornerDownRight className="size-3" /> Source: AI Agent Scan
                       </div>
-                    </div>
+                    </Link>
                   ))}
                   {targetAssets.length === 0 && (
                     <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-background/50">
@@ -415,7 +421,11 @@ export default function TargetDetailPage() {
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap gap-1">
                               {port.assets?.slice(0, 2).map((a: any, idx: number) => (
-                                <Badge key={idx} variant="secondary" className="text-[10px] py-0">{a.name}</Badge>
+                                <Link key={idx} href={`/assets/${a.id || a._id}`}>
+                                  <Badge variant="secondary" className="text-[10px] py-0 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
+                                    {a.name}
+                                  </Badge>
+                                </Link>
                               )) || "N/A"}
                               {(port.assets?.length || 0) > 2 && <Badge variant="outline" className="text-[10px] py-0">+{port.assets.length - 2} more</Badge>}
                             </div>
@@ -454,7 +464,18 @@ export default function TargetDetailPage() {
                       {targetServices.map((service, i) => (
                         <tr key={i} className="hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 font-bold">{service.name}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{service.port}/{service.protocol} ({service.assets?.length || 0} Assets)</td>
+                          <td className="px-4 py-3 font-mono text-xs">
+                            {service.port}/{service.protocol} 
+                            <div className="flex gap-1 mt-1">
+                              {service.assets?.map((asset: any) => (
+                                <Link key={asset.id} href={`/assets/${asset.id}`}>
+                                  <Badge variant="outline" className="text-[9px] px-1 h-4 cursor-pointer hover:bg-muted transition-colors">
+                                    {asset.name}
+                                  </Badge>
+                                </Link>
+                              ))}
+                            </div>
+                          </td>
                           <td className="px-4 py-3">{service.version || "Detected"}</td>
                           <td className="px-4 py-3 text-right">
                              <Badge className="bg-primary/10 text-primary border-primary/20">{service.riskScore || "Low"}</Badge>

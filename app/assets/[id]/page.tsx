@@ -2,7 +2,7 @@
 import * as React from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import { ChevronLeft, Globe, Activity, ShieldCheck, Cpu, TerminalSquare, AlertTriangle, CheckCircle2, XCircle, ArrowUpRight } from "lucide-react"
+import { ChevronLeft, Globe, Activity, ShieldCheck, Cpu, TerminalSquare, AlertTriangle, CheckCircle2, XCircle, ArrowUpRight, Clock } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,9 +21,50 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 
-export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const isAPI = id === "AST-002" || id === "AST-003";
+import { useGlobalData } from "@/app/context/GlobalDataContext"
+
+export default function AssetDetailPage() {
+  const params = useParams()
+  const id = params.id as string
+  const { data, refreshData } = useGlobalData()
+
+  const asset = data.assets.find(a => String(a._id || a.id) === id)
+  
+  // Highly accurate cross-reference logic
+  const relatedPorts = data.ports.filter(p => {
+    if (!asset) return false;
+    
+    // 1. Match by Subdomain (The Agent stores subdomain as 'id' in the port.assets array)
+    const subdomainMatch = p.assets?.some((a: any) => 
+      a.id === asset.subdomain || 
+      a.name === asset.subdomain ||
+      a.name === asset.name
+    );
+    
+    // 2. Match by IP (Reliable cross-reference)
+    const ipMatch = p.assets?.some((a: any) => a.ip === asset.ip && asset.ip !== "Pending...");
+    
+    return subdomainMatch || ipMatch;
+  })
+  const relatedServices = data.services.filter(s => 
+    s.assets?.some((a: any) => String(a.id || a._id) === id)
+  )
+
+  if (!asset) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="text-center space-y-4">
+          <TerminalSquare className="size-12 text-muted-foreground mx-auto" />
+          <h2 className="text-xl font-bold">Asset Not Found</h2>
+          <p className="text-muted-foreground">The requested asset ID {id} does not exist.</p>
+          <Button asChild><Link href="/assets">Back to Assets</Link></Button>
+        </div>
+      </div>
+    )
+  }
+
+  const riskScore = asset.riskScore || 0;
+  const status = asset.status || "Active";
 
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
@@ -39,12 +80,12 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight">
-                {isAPI ? "Web API Gateway" : "Primary Database Server"}
+                {asset.name || asset.deviceName || asset.subdomain}
               </h1>
               <Badge variant="default" className="h-6 uppercase px-2 text-[10px] tracking-wider">Active</Badge>
             </div>
             <p className="text-sm font-mono text-muted-foreground mt-1">
-              {id} &bull; {isAPI ? "API/Gateway" : "Database"}
+              {id} &bull; {asset.type || "Asset"}
             </p>
           </div>
         </div>
@@ -72,16 +113,16 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             {/* Quick Stats Summary */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Overall Score
-                </CardTitle>
+                <CardTitle className="text-sm font-medium"> Security Rating </CardTitle>
                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-emerald-500">92/100</div>
-                <Progress value={92} className="h-2 mt-3 [&>div]:bg-emerald-500" />
+                <div className="text-2xl font-bold text-emerald-500">
+                  {Math.max(40, 100 - (relatedPorts.length * 5))} / 100
+                </div>
+                <Progress value={Math.max(40, 100 - (relatedPorts.length * 5))} className="h-2 mt-3 [&>div]:bg-emerald-500" />
                 <p className="text-xs text-muted-foreground mt-2">
-                  +2% from last week
+                  Security rating based on exposure
                 </p>
               </CardContent>
             </Card>
@@ -89,18 +130,22 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Vulnerabilities
+                  Active Exposures
                 </CardTitle>
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2 Issues</div>
+                <div className="text-2xl font-bold">{relatedPorts.length} Instances</div>
                 <div className="flex items-center gap-2 mt-3">
-                  <Badge variant="destructive" className="px-1 text-[10px]">1 HIGH</Badge>
-                  <Badge variant="secondary" className="px-1 text-[10px] text-amber-500">1 MEDIUM</Badge>
+                  <Badge variant="destructive" className="px-1 text-[10px]">
+                    {relatedPorts.filter(p => p.severity > 70).length} HIGH
+                  </Badge>
+                  <Badge variant="secondary" className="px-1 text-[10px] text-amber-500">
+                    {relatedPorts.filter(p => p.severity <= 70).length} INFO
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Requires immediate attention
+                  Attack surface detected
                 </p>
               </CardContent>
             </Card>
@@ -108,15 +153,19 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Uptime
+                  Connectivity
                 </CardTitle>
                 <Activity className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">99.98%</div>
-                <Progress value={99.98} className="h-2 mt-3" />
+                <div className="text-2xl font-bold">{status === "Active" ? "100%" : "0%"}</div>
+                <Progress value={status === "Active" ? 100 : 0} className="h-2 mt-3" />
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <CheckCircle2 className="size-3 text-emerald-500" /> Operational
+                  {status === "Active" ? (
+                    <><CheckCircle2 className="size-3 text-emerald-500" /> Reachable</>
+                  ) : (
+                    <><XCircle className="size-3 text-destructive" /> Unreachable</>
+                  )}
                 </p>
               </CardContent>
             </Card>
@@ -130,25 +179,25 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                   Hardware and deployment configuration for this asset.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-6 pt-4">
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
                 <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hostname</span>
-                  <p className="font-semibold">{isAPI ? "api.gateway.prod.com" : "db01.cluster.internal"}</p>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hostname / Subdomain</span>
+                  <p className="font-semibold">{asset.subdomain || asset.name || asset.deviceName}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Datacenter</span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Organization</span>
                   <p className="font-semibold flex items-center gap-2">
-                    <Globe className="size-4 text-primary" /> us-east-1 (AWS)
+                    <Globe className="size-4 text-primary" /> {data.targets.find(t => String(t._id || t.id) === asset.targetId)?.organizationName || "Unknown"}
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Internal IP</span>
-                  <p className="font-mono text-sm font-medium">192.168.1.10</p>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Detected IP</span>
+                  <p className="font-mono text-sm font-medium">{asset.ip || "Unknown"}</p>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">System</span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Scanned</span>
                   <p className="font-medium flex items-center gap-2">
-                    <Cpu className="size-4 text-muted-foreground" /> Ubuntu 22.04 LTS
+                    <Clock className="size-4 text-muted-foreground" /> {asset.lastScanned ? new Date(asset.lastScanned).toLocaleString() : "Recently"}
                   </p>
                 </div>
               </CardContent>
@@ -166,24 +215,21 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                   <div className="flex items-center gap-4">
                     <div className="size-2 rounded-full ring-4 ring-emerald-500/20 bg-emerald-500" />
                     <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">Complete System Scan</p>
-                      <p className="text-xs text-muted-foreground">Today at 10:30 AM</p>
+                      <p className="text-sm font-medium leading-none">AI Asset Mapping</p>
+                      <p className="text-xs text-muted-foreground">
+                        {asset.lastScanned ? new Date(asset.lastScanned).toLocaleString() : "Sync active"}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="size-2 rounded-full ring-4 ring-amber-500/20 bg-amber-500" />
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">Network Discovery</p>
-                      <p className="text-xs text-muted-foreground">Yesterday at 4:15 PM</p>
+                  {relatedPorts.length > 0 && (
+                    <div className="flex items-center gap-4">
+                      <div className="size-2 rounded-full ring-4 ring-amber-500/20 bg-amber-500" />
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium leading-none">Network Exposure Check</p>
+                        <p className="text-xs text-muted-foreground">{relatedPorts.length} ports verified</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="size-2 rounded-full ring-4 ring-red-500/20 bg-red-500" />
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium leading-none">Vulnerability Patch Check</p>
-                      <p className="text-xs text-muted-foreground">Oct 29, 2023</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -200,34 +246,30 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             </CardHeader>
             <CardContent>
               <div className="rounded-md border divide-y">
-                <div className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1"><XCircle className="size-5 text-destructive" /></div>
-                    <div>
-                      <h4 className="font-semibold text-sm">CVE-2023-4863: WebP Heap Buffer Overflow</h4>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Buffer overflow via malformed WebP image can lead to arbitrary code execution.</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="destructive" className="h-5 text-[10px]">Critical</Badge>
-                        <span className="text-xs text-muted-foreground">CVSS: 8.8</span>
+                {relatedPorts.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground italic">
+                    No verified vulnerabilities currently logged for this asset.
+                  </div>
+                ) : (
+                  relatedPorts.map((p, i) => (
+                    <div key={i} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start gap-4">
+                        <div className="mt-1">
+                          {p.severity > 70 ? <XCircle className="size-5 text-destructive" /> : <AlertTriangle className="size-5 text-amber-500" />}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-sm">Port {p.portNumber} Identified: {p.service || p.description}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Status: {p.state || "Detected"}. This port has been verified as active by the AI scanner.</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant={p.severity > 70 ? "destructive" : "secondary"} className="h-5 text-[10px]">
+                              {p.severity > 70 ? "Critical" : "Detected Area"}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <Button variant="secondary" size="sm">Review</Button>
-                </div>
-                <div className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="mt-1"><AlertTriangle className="size-5 text-amber-500" /></div>
-                    <div>
-                      <h4 className="font-semibold text-sm">Outdated Nginx Version</h4>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">Server is running Nginx 1.18.0 which contains known medium severity vulnerabilities.</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="secondary" className="h-5 text-[10px] text-amber-500 border-amber-500/20 bg-amber-500/10">Medium</Badge>
-                        <span className="text-xs text-muted-foreground">CVSS: 5.3</span>
-                      </div>
-                    </div>
-                  </div>
-                  <Button variant="secondary" size="sm">Review</Button>
-                </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -254,36 +296,20 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {isAPI ? (
-                      <>
-                        <tr className="hover:bg-muted/50 transition-colors">
-                          <td className="px-6 py-4 font-mono">443</td>
-                          <td className="px-6 py-4">TCP</td>
-                          <td className="px-6 py-4 font-medium text-primary">HTTPS</td>
-                          <td className="px-6 py-4"><Badge variant="default" className="text-[10px]">Open</Badge></td>
-                          <td className="px-6 py-4 text-right">
-                            <Button variant="ghost" size="icon" className="size-8"><ArrowUpRight className="size-4" /></Button>
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-muted/50 transition-colors">
-                          <td className="px-6 py-4 font-mono">80</td>
-                          <td className="px-6 py-4">TCP</td>
-                          <td className="px-6 py-4 font-medium">HTTP</td>
-                          <td className="px-6 py-4"><Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/20">Vulnerable</Badge></td>
-                          <td className="px-6 py-4 text-right">
-                            <Button variant="ghost" size="icon" className="size-8"><ArrowUpRight className="size-4" /></Button>
-                          </td>
-                        </tr>
-                      </>
-                    ) : (
-                      <tr className="hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 font-mono">5432</td>
-                        <td className="px-6 py-4">TCP</td>
-                        <td className="px-6 py-4 font-medium text-primary">PostgreSQL</td>
-                        <td className="px-6 py-4"><Badge variant="default" className="text-[10px]">Active</Badge></td>
+                    {relatedPorts.map((p, i) => (
+                      <tr key={i} className="hover:bg-muted/50 transition-colors">
+                        <td className="px-6 py-4 font-mono">{p.portNumber}</td>
+                        <td className="px-6 py-4 uppercase tracking-tighter text-[10px] font-bold">{p.protocol}</td>
+                        <td className="px-6 py-4 font-medium text-primary">{p.service || p.description}</td>
+                        <td className="px-6 py-4"><Badge variant="default" className="text-[10px] uppercase font-bold tracking-widest h-5">{p.state || "Open"}</Badge></td>
                         <td className="px-6 py-4 text-right">
                           <Button variant="ghost" size="icon" className="size-8"><ArrowUpRight className="size-4" /></Button>
                         </td>
+                      </tr>
+                    ))}
+                    {relatedPorts.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground italic">No port data found for this specific asset.</td>
                       </tr>
                     )}
                   </tbody>

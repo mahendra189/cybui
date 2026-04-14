@@ -142,37 +142,46 @@ export default function TargetDetailPage() {
 
     setIsScanning(true);
     try {
-      const resp = await fetch('/api/agent/scan', {
+      // Gather current intelligence context to pass to the AI
+      const context = {
+        target: {
+          name: target.organizationName,
+          domain: target.primaryDomain
+        },
+        assets: targetAssets.map(a => ({ name: a.subdomain || a.name, ip: a.ip })),
+        ports: targetPorts.map(p => ({ port: p.portNumber, protocol: p.protocol, service: p.service })),
+        services: targetServices.map(s => ({ name: s.name, version: s.version, port: s.port }))
+      };
+
+      const resp = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: newMsg.content, targetId: targetId, mode: scanMode })
+        body: JSON.stringify({ 
+          prompt: newMsg.content, 
+          targetId: targetId,
+          context: context 
+        })
       });
 
       if (resp.ok) {
         const result = await resp.json();
-        console.log("Agent Scan Result Stats:", result.stats);
-
-        if (result.rawText) {
-          // Display the agent's refusal or conversational text
+        
+        if (result.response) {
           setChatMessages(prev => [
             ...prev,
-            { role: 'agent', content: result.rawText, type: "chat" },
-            { role: 'agent', content: "Scan halted by agent security policy.", type: "log" }
+            { role: 'agent', content: result.response, type: "chat" }
           ]);
-        } else {
+        } else if (result.rawText) {
           setChatMessages(prev => [
             ...prev,
-            { role: 'agent', content: `Reconnaissance complete. Found ${result.stats?.assets || 0} assets, ${result.stats?.ports || 0} ports, and ${result.stats?.services || 0} services.`, type: "log" },
-            { role: 'agent', content: "Scan results successfully synchronized with backend database.", type: "chat" }
+            { role: 'agent', content: result.rawText, type: "chat" }
           ]);
         }
-        // Trigger live refresh
-        await refreshData();
       } else {
-        setChatMessages(prev => [...prev, { role: 'agent', content: "Execution failed due to server error.", type: "log" }]);
+        setChatMessages(prev => [...prev, { role: 'agent', content: "Failed to reach intelligence analyst service.", type: "log" }]);
       }
     } catch (e) {
-      setChatMessages(prev => [...prev, { role: 'agent', content: "Network error trying to engage agent.", type: "log" }]);
+      setChatMessages(prev => [...prev, { role: 'agent', content: "Network error engaging intelligence analyst.", type: "log" }]);
     } finally {
       setIsScanning(false);
     }

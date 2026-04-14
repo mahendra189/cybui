@@ -91,6 +91,16 @@ export default function ServicesPage() {
     setCurrentPage(1)
   }, [selectedTarget])
 
+  const selectedTargetName = React.useMemo(() => {
+    if (selectedTarget === "all") return "Global Inventory";
+    const target = globalData.targets.find(t => String(t._id || t.id) === selectedTarget);
+    return target ? (target.organizationName || target.name) : "Target";
+  }, [selectedTarget, globalData.targets]);
+
+  React.useEffect(() => {
+    document.title = `Services - ${selectedTargetName} | CYB Dashboard`;
+  }, [selectedTargetName]);
+
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }))
   }
@@ -126,11 +136,15 @@ export default function ServicesPage() {
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Services Inventory</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Analyze risk scores, active trends, and discover dependencies per service.
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Services Inventory {selectedTarget !== "all" && <span className="text-primary/60">— {selectedTargetName}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 text-balance">
+            {selectedTarget === "all" 
+              ? "Analyze risk scores, active trends, and discover dependencies per service." 
+              : `Service risk and trend analysis for ${selectedTargetName}.`}
           </p>
-        </div>
+         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <select 
             className="flex h-9 w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"

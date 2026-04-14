@@ -53,6 +53,16 @@ export default function AssetsPage() {
     setCurrentPage(1)
   }, [selectedTarget])
 
+  const selectedTargetName = React.useMemo(() => {
+    if (selectedTarget === "all") return "Global View";
+    const target = globalData.targets.find(t => String(t._id || t.id) === selectedTarget);
+    return target ? (target.organizationName || target.name) : "Target";
+  }, [selectedTarget, globalData.targets]);
+
+  React.useEffect(() => {
+    document.title = `Assets - ${selectedTargetName} | CYB Dashboard`;
+  }, [selectedTargetName]);
+
   const filteredAssets = React.useMemo(() => {
     if (!searchQuery) return pagedAssets;
     return pagedAssets.filter((a) => {
@@ -65,9 +75,13 @@ export default function AssetsPage() {
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Assets Inventory</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            A comprehensive list of all discovered external and internal assets.
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Assets Inventory {selectedTarget !== "all" && <span className="text-primary/60">— {selectedTargetName}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 text-balance">
+            {selectedTarget === "all" 
+              ? "A comprehensive list of all discovered external and internal assets." 
+              : `Discovered attack surface for ${selectedTargetName}.`}
           </p>
         </div>
         <div className="flex items-center gap-3">

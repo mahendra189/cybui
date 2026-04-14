@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono, Inter } from "next/font/google"
 import { AppSidebar } from "@/components/app-sidebar"
+import { Metadata } from "next"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
@@ -14,6 +15,14 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+export const metadata: Metadata = {
+  title: "CYB Dashboard | Intelligence Reconnaissance",
+  description: "Advanced AI-driven security reconnaissance and attack surface management.",
+  icons: {
+    icon: "/favicon.png",
+  },
+}
 
 import { AuthProvider } from "@/components/auth-provider"
 

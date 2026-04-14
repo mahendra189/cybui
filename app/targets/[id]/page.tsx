@@ -48,6 +48,13 @@ export default function TargetDetailPage() {
 
   // Find target from live context
   const rawTarget = data.targets.find(t => String(t._id || t.id) === targetId)
+  const targetName = rawTarget ? (rawTarget.organizationName || rawTarget.name) : "Target Details";
+
+  React.useEffect(() => {
+    if (targetName) {
+      document.title = `${targetName} - Intelligence | CYB Dashboard`;
+    }
+  }, [targetName]);
 
   // Simulation state for the interactive Agent Chat / Logs
   const [chatMessages, setChatMessages] = React.useState([

@@ -76,6 +76,16 @@ export default function PortsPage() {
     setCurrentPage(1)
   }, [selectedTarget])
 
+  const selectedTargetName = React.useMemo(() => {
+    if (selectedTarget === "all") return "Global Infrastructure";
+    const target = globalData.targets.find(t => String(t._id || t.id) === selectedTarget);
+    return target ? (target.organizationName || target.name) : "Target";
+  }, [selectedTarget, globalData.targets]);
+
+  React.useEffect(() => {
+    document.title = `Network Ports - ${selectedTargetName} | CYB Dashboard`;
+  }, [selectedTargetName]);
+
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }))
   }
@@ -108,9 +118,13 @@ export default function PortsPage() {
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Port Exposure Monitor</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Analyze open ports across your network and execute batch policies.
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Network Ports {selectedTarget !== "all" && <span className="text-primary/60">— {selectedTargetName}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1 text-balance">
+            {selectedTarget === "all" 
+              ? "Analyze global port exposures, service status, and vulnerability vectors." 
+              : `Port exposure analysis for ${selectedTargetName}.`}
           </p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">

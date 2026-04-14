@@ -25,6 +25,10 @@ export default function TargetsPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null)
 
+  React.useEffect(() => {
+    document.title = "Monitored Targets | CYB Dashboard";
+  }, []);
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to remove this target? All associated scan data will be permanently deleted.")) {

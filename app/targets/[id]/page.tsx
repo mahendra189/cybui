@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   Building2, Globe, Activity, Server, Target, CornerDownRight, Network,
   Terminal, Bot, Send, HardDrive, ListEnd, Clock,
   AlertTriangle,
-  PlayIcon
+  PlayIcon,
+  Trash2
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -41,11 +42,12 @@ import { Zap, Search, ShieldAlert } from "lucide-react"
 export default function TargetDetailPage() {
   const { data: session } = useSession()
   const params = useParams()
+  const router = useRouter()
   const targetId = params.id as string
   const { data, refreshData } = useGlobalData()
 
   // Find target from live context
-  const rawTarget = data.targets.find(t => t._id === targetId || t.id === targetId)
+  const rawTarget = data.targets.find(t => String(t._id || t.id) === targetId)
 
   // Simulation state for the interactive Agent Chat / Logs
   const [chatMessages, setChatMessages] = React.useState([
@@ -60,6 +62,32 @@ export default function TargetDetailPage() {
   const [scanMode, setScanMode] = React.useState("fast");
   const [scanElapsed, setScanElapsed] = React.useState(0);
   const [simulatedProgress, setSimulatedProgress] = React.useState(0);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDeleteTarget = async () => {
+    if (!window.confirm("Are you sure you want to PERMANENTLY remove this target and all its associated scan results?")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const resp = await fetch(`/api/targets/${targetId}`, { method: 'DELETE' });
+      if (resp.ok) {
+        setChatMessages(prev => [...prev, { role: 'agent', content: "Target deletion sequence complete. Purged all records.", type: 'log' }]);
+        // Brief delay for the log to show before redirecting
+        setTimeout(() => {
+          router.push("/targets");
+        }, 1000);
+      } else {
+        alert("Failed to delete target.");
+        setIsDeleting(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting target.");
+      setIsDeleting(false);
+    }
+  };
 
   React.useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -254,8 +282,18 @@ export default function TargetDetailPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <Button onClick={handleRunRecon} size="sm" className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+              <Button onClick={handleRunRecon} size="sm" className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20" disabled={isScanning || isDeleting}>
                 <PlayIcon className="size-4" /> Launch Recon
+              </Button>
+              <Button 
+                onClick={handleDeleteTarget} 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-muted"
+                disabled={isScanning || isDeleting}
+              >
+                <Trash2 className={`size-4 ${isDeleting ? 'animate-pulse' : ''}`} />
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </Button>
             </div>
           )}

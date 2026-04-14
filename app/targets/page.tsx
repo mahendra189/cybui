@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Building2, Search, Plus, Activity, Play, Pause, Server, Globe } from "lucide-react"
+import { Building2, Search, Plus, Activity, Play, Pause, Server, Globe, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -21,8 +21,31 @@ import { useGlobalData } from "@/app/context/GlobalDataContext"
 
 export default function TargetsPage() {
   const router = useRouter()
-  const { data } = useGlobalData()
+  const { data, refreshData } = useGlobalData()
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [isDeleting, setIsDeleting] = React.useState<string | null>(null)
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to remove this target? All associated scan data will be permanently deleted.")) {
+      return;
+    }
+
+    setIsDeleting(id);
+    try {
+      const resp = await fetch(`/api/targets/${id}`, { method: 'DELETE' });
+      if (resp.ok) {
+        await refreshData();
+      } else {
+        alert("Failed to delete target.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while deleting.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const filteredTargets = React.useMemo(() => {
     return data.targets.filter(
@@ -74,10 +97,10 @@ export default function TargetsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredTargets.map((target) => {
+            {filteredTargets.map((target, index) => {
               // Calculate real counts from global data based on Agent scans
-              const targetId = target._id || target.id;
-              const realAssetsCount = data.assets.filter(a => a.targetId === targetId).length;
+              const targetId = String(target._id || target.id || `temp-${index}`);
+              const realAssetsCount = data.assets.filter(a => String(a.targetId) === targetId).length;
               
               return (
               <TableRow 
@@ -129,16 +152,29 @@ export default function TargetsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    title="Toggle Scan Engine"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    {target.status === "Paused" ? <Play className="size-4 text-emerald-500" /> : <Pause className="size-4 text-muted-foreground" />}
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="size-8"
+                      title="Toggle Scan Engine"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      {target.status === "Paused" ? <Play className="size-4 text-emerald-500" /> : <Pause className="size-4 text-muted-foreground" />}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      disabled={isDeleting === targetId}
+                      title="Delete Target"
+                      onClick={(e) => handleDelete(e, targetId)}
+                    >
+                      <Trash2 className={`size-4 ${isDeleting === targetId ? 'animate-pulse' : ''}`} />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )})}

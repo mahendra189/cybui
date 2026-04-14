@@ -20,6 +20,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { Lock, Unlock, ShieldAlert as SSLAlert, Check, X, Loader2 } from "lucide-react"
 
 import { useGlobalData } from "@/app/context/GlobalDataContext"
 
@@ -29,24 +30,23 @@ export default function AssetDetailPage() {
   const { data, refreshData } = useGlobalData()
 
   const asset = data.assets.find(a => String(a._id || a.id) === id)
-  
   // Highly accurate cross-reference logic
   const relatedPorts = data.ports.filter(p => {
     if (!asset) return false;
-    
+
     // 1. Match by Subdomain (The Agent stores subdomain as 'id' in the port.assets array)
-    const subdomainMatch = p.assets?.some((a: any) => 
-      a.id === asset.subdomain || 
+    const subdomainMatch = p.assets?.some((a: any) =>
+      a.id === asset.subdomain ||
       a.name === asset.subdomain ||
       a.name === asset.name
     );
-    
+
     // 2. Match by IP (Reliable cross-reference)
     const ipMatch = p.assets?.some((a: any) => a.ip === asset.ip && asset.ip !== "Pending...");
-    
+
     return subdomainMatch || ipMatch;
   })
-  const relatedServices = data.services.filter(s => 
+  const relatedServices = data.services.filter(s =>
     s.assets?.some((a: any) => String(a.id || a._id) === id)
   )
 
@@ -65,6 +65,75 @@ export default function AssetDetailPage() {
 
   const riskScore = asset.riskScore || 0;
   const status = asset.status || "Active";
+
+  const [sslData, setSslData] = React.useState<any>(null);
+  const [isSslScanning, setIsSslScanning] = React.useState(false);
+
+  // Adapter for testssl.sh flat JSON array format
+  const parseTestSslData = (rawArray: any[]) => {
+    const find = (id: string) => rawArray.find(item => item.id === id);
+
+    // Mapping severity to offered status
+    const isOffered = (finding: string) => finding && !finding.toLowerCase().includes("not offered");
+
+    return {
+      overallGrade: find("overall_grade")?.finding || "N/A",
+      finalScore: parseInt(find("final_score")?.finding) || 0,
+      metrics: {
+        "Protocol Support": parseInt(find("protocol_support_score")?.finding) || 0,
+        "Key Exchange": parseInt(find("key_exchange_score")?.finding) || 0,
+        "Cipher Strength": parseInt(find("cipher_strength_score")?.finding) || 0
+      },
+      protocols: [
+        { name: "SSLv2", offered: isOffered(find("SSLv2")?.finding), status: find("SSLv2")?.severity },
+        { name: "SSLv3", offered: isOffered(find("SSLv3")?.finding), status: find("SSLv3")?.severity },
+        { name: "TLS 1.0", offered: isOffered(find("TLS1")?.finding), status: find("TLS1")?.severity },
+        { name: "TLS 1.1", offered: isOffered(find("TLS1_1")?.finding), status: find("TLS1_1")?.severity },
+        { name: "TLS 1.2", offered: isOffered(find("TLS1_2")?.finding), status: find("TLS1_2")?.severity },
+        { name: "TLS 1.3", offered: isOffered(find("TLS1_3")?.finding), status: find("TLS1_3")?.severity }
+      ],
+      vulnerabilities: [
+        { id: "Heartbleed", vulnerable: find("heartbleed")?.severity !== "OK", cve: find("heartbleed")?.cve, finding: find("heartbleed")?.finding },
+        { id: "CCS", vulnerable: find("CCS")?.severity !== "OK", cve: find("CCS")?.cve, finding: find("CCS")?.finding },
+        { id: "ROBOT", vulnerable: find("ROBOT")?.severity !== "OK", cve: find("ROBOT")?.cve, finding: find("ROBOT")?.finding },
+        { id: "SWEET32", vulnerable: find("SWEET32")?.severity !== "OK", cve: find("SWEET32")?.cve, finding: find("SWEET32")?.finding },
+        { id: "BEAST", vulnerable: find("BEAST")?.severity !== "OK", cve: find("BEAST")?.cve, finding: find("BEAST")?.finding },
+        { id: "POODLE", vulnerable: find("POODLE_SSL")?.severity !== "OK", cve: find("POODLE_SSL")?.cve, finding: find("POODLE_SSL")?.finding }
+      ],
+      certificate: {
+        commonName: find("cert_commonName")?.finding || find("cert_subjectName")?.finding || "Unknown",
+        issuer: find("cert_issuer")?.finding || "N/A",
+        notBefore: find("cert_notBefore")?.finding || "N/A",
+        notAfter: find("cert_notAfter")?.finding || "N/A",
+        keySize: find("cert_keySize")?.finding || "N/A",
+        signatureAlgorithm: find("cert_signatureAlgorithm")?.finding || "N/A"
+      }
+    };
+  };
+
+  const handleRunSslScan = async () => {
+    setIsSslScanning(true);
+    setSslData(null);
+    try {
+      const resp = await fetch("/api/testssl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: asset.name })
+      });
+      if (resp.ok) {
+        const rawJson = await resp.json();
+        const formattedData = parseTestSslData(rawJson);
+        setSslData(formattedData);
+      } else {
+        alert("SSL Scan failed. Ensure testssl is configured on backend.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error during SSL scan.");
+    } finally {
+      setIsSslScanning(false);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
@@ -106,6 +175,9 @@ export default function AssetDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="vulnerabilities">Vulnerabilities</TabsTrigger>
           <TabsTrigger value="network">Network Config</TabsTrigger>
+          <TabsTrigger value="ssl" className="gap-2">
+            <Lock className="size-3" /> SSL / TLS
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -317,6 +389,137 @@ export default function AssetDetailPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ssl" className="space-y-4">
+          {!sslData && !isSslScanning ? (
+            <Card className="border-dashed flex flex-col items-center justify-center p-12 text-center">
+              <SSLAlert className="size-12 text-muted-foreground mb-4 opacity-50" />
+              <CardTitle>No SSL Analysis Found</CardTitle>
+              <CardDescription className="max-w-xs mx-auto mt-2">
+                Perform a deep TLS/SSL handshake analysis to identify weak ciphers and protocol vulnerabilities.
+              </CardDescription>
+              <Button onClick={handleRunSslScan} className="mt-6 gap-2">
+                <Activity className="size-4" /> Start testssl.sh Scan
+              </Button>
+            </Card>
+          ) : isSslScanning ? (
+            <Card className="p-12 flex flex-col items-center justify-center text-center">
+              <Loader2 className="size-10 text-primary animate-spin mb-4" />
+              <CardTitle>Analyzing SSL Handshake...</CardTitle>
+              <CardDescription>Requesting deep scan from backend agent. This may take up to 60 seconds.</CardDescription>
+            </Card>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-12">
+              {/* Grade and Metrics */}
+              <Card className="md:col-span-4 bg-muted/20">
+                <CardHeader className="text-center">
+                  <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Overall Rating</span>
+                  <div className={`text-8xl font-black mx-auto mb-4 ${sslData.overallGrade?.startsWith('A') ? 'text-emerald-500' :
+                    sslData.overallGrade?.startsWith('B') ? 'text-amber-500' : 'text-destructive'
+                    }`}>
+                    {sslData.overallGrade}
+                  </div>
+                  <CardTitle className="text-xl">Score: {sslData.finalScore}/100</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {Object.entries(sslData.metrics || {}).map(([key, val]: [string, any]) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex justify-between text-xs font-medium uppercase tracking-tight">
+                        <span>{key}</span>
+                        <span>{val}%</span>
+                      </div>
+                      <Progress value={val} className="h-1.5" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Protocol Support */}
+              <Card className="md:col-span-8">
+                <CardHeader>
+                  <CardTitle>Protocol Support</CardTitle>
+                  <CardDescription>Supported versions of SSL and TLS detected on this interface.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {sslData.protocols?.map((p: any) => (
+                      <div key={p.name} className="flex items-center justify-between p-3 border rounded-lg bg-background">
+                        <span className="text-sm font-semibold">{p.name}</span>
+                        {p.offered ? (
+                          <Badge variant={p.status === "OK" ? "default" : "secondary"} className={p.status === "OK" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-amber-500/10 text-amber-500 border-amber-500/20"}>
+                            {p.status}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="opacity-50 text-[10px]">NOT OFFERED</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Vulnerabilities Table */}
+              <Card className="md:col-span-12">
+                <CardHeader>
+                  <CardTitle>TLS Vulnerability Scan Results</CardTitle>
+                  <CardDescription>Direct checks for common SSL/TLS attacks.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {sslData.vulnerabilities?.map((v: any) => (
+                      <div key={v.id} className={`p-4 rounded-lg border ${v.vulnerable ? 'border-destructive bg-destructive/5' : 'bg-muted/10'}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="font-bold text-sm">{v.id}</span>
+                          {v.vulnerable ? <X className="size-4 text-destructive" /> : <Check className="size-4 text-emerald-500" />}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-mono">{v.cve || "No CVE provided"}</p>
+                        <p className={`text-xs font-bold mt-1 ${v.vulnerable ? 'text-destructive' : 'text-emerald-500'}`}>
+                          {v.vulnerable ? 'VULNERABLE' : 'Secured'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Certificate Details */}
+              <Card className="md:col-span-12">
+                <CardHeader>
+                  <CardTitle>Certificate Information</CardTitle>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2 text-sm italic">
+                      <span className="text-muted-foreground">Subject Name:</span>
+                      <span className="font-bold">{sslData.certificate?.commonName}</span>
+                      <span className="text-muted-foreground">Issuer:</span>
+                      <span className="font-medium text-primary">{sslData.certificate?.issuer}</span>
+                      <span className="text-muted-foreground">Algorithm:</span>
+                      <span className="font-mono text-xs">{sslData.certificate?.signatureAlgorithm}</span>
+                      <span className="text-muted-foreground">Key Specs:</span>
+                      <span className="font-mono text-xs">{sslData.certificate?.keySize}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex flex-col p-3 rounded bg-muted/30 border border-muted">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Validity Timeline</span>
+                      <div className="flex justify-between text-xs font-mono">
+                        <span>Start: {sslData.certificate?.notBefore}</span>
+                        <span>End: {sslData.certificate?.notAfter}</span>
+                      </div>
+                      <Progress value={60} className="h-1.5 mt-2" />
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {sslData.certificate?.subjectAltNames?.slice(0, 10).map((name: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-[9px] font-mono opacity-70">SAN: {name}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

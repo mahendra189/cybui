@@ -38,6 +38,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Zap, Search, ShieldAlert } from "lucide-react"
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export default function TargetDetailPage() {
   const { data: session } = useSession()
@@ -557,11 +559,29 @@ export default function TargetDetailPage() {
                       ? 'bg-primary text-primary-foreground font-sans text-sm shadow-md'
                       : msg.type === 'log'
                         ? 'bg-muted/50 border border-muted text-muted-foreground text-xs'
-                        : 'bg-muted border border-border text-foreground text-sm font-sans'
+                        : 'bg-muted border border-border text-foreground text-sm font-sans prose prose-sm dark:prose-invert max-w-none'
                     }
                   `}>
                     {msg.type === 'log' && <span className="text-emerald-500 mr-2">➜</span>}
-                    {msg.content}
+                    {msg.role === 'agent' && msg.type === 'chat' ? (
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          table: ({node, ...props}) => <div className="overflow-x-auto my-2"><table className="border-collapse border border-muted-foreground/20 w-full" {...props} /></div>,
+                          th: ({node, ...props}) => <th className="border border-muted-foreground/20 px-2 py-1 bg-muted/50" {...props} />,
+                          td: ({node, ...props}) => <td className="border border-muted-foreground/20 px-2 py-1" {...props} />,
+                          code: ({node, ...props}) => <code className="bg-muted-foreground/10 px-1 rounded font-mono text-xs" {...props} />,
+                          a: ({node, ...props}) => <a className="text-primary underline hover:text-primary/80" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc ml-4 mb-2" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal ml-4 mb-2" {...props} />
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               </div>

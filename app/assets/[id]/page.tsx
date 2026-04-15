@@ -66,9 +66,6 @@ export default function AssetDetailPage() {
   const riskScore = asset.riskScore || 0;
   const status = asset.status || "Active";
 
-  const [sslData, setSslData] = React.useState<any>(null);
-  const [isSslScanning, setIsSslScanning] = React.useState(false);
-
   // Adapter for testssl.sh flat JSON array format
   const parseTestSslData = (rawArray: any[]) => {
     const find = (id: string) => rawArray.find(item => item.id === id);
@@ -111,6 +108,27 @@ export default function AssetDetailPage() {
     };
   };
 
+  const [sslData, setSslData] = React.useState<any>(null);
+  const [sslScannedAt, setSslScannedAt] = React.useState<string | null>(null);
+  const [isSslLoading, setIsSslLoading] = React.useState(true);
+  const [isSslScanning, setIsSslScanning] = React.useState(false);
+
+  // Load saved SSL scan from DB on mount
+  React.useEffect(() => {
+    if (!id) return;
+    setIsSslLoading(true);
+    fetch(`/api/testssl?assetId=${id}`)
+      .then(r => r.json())
+      .then(res => {
+        if (res.data) {
+          setSslData(parseTestSslData(res.data));
+          setSslScannedAt(res.scannedAt ? new Date(res.scannedAt).toLocaleString() : null);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setIsSslLoading(false));
+  }, [id]);
+
   const handleRunSslScan = async () => {
     setIsSslScanning(true);
     setSslData(null);
@@ -118,12 +136,13 @@ export default function AssetDetailPage() {
       const resp = await fetch("/api/testssl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: asset.name })
+        body: JSON.stringify({ domain: asset.name, assetId: id })
       });
       if (resp.ok) {
         const rawJson = await resp.json();
         const formattedData = parseTestSslData(rawJson);
         setSslData(formattedData);
+        setSslScannedAt(new Date().toLocaleString());
       } else {
         alert("SSL Scan failed. Ensure testssl is configured on backend.");
       }
@@ -392,7 +411,13 @@ export default function AssetDetailPage() {
         </TabsContent>
 
         <TabsContent value="ssl" className="space-y-4">
-          {!sslData && !isSslScanning ? (
+          {isSslLoading ? (
+            <Card className="p-12 flex flex-col items-center justify-center text-center">
+              <Loader2 className="size-10 text-muted-foreground animate-spin mb-4" />
+              <CardTitle>Loading SSL Data...</CardTitle>
+              <CardDescription>Checking for saved SSL scan results.</CardDescription>
+            </Card>
+          ) : !sslData && !isSslScanning ? (
             <Card className="border-dashed flex flex-col items-center justify-center p-12 text-center">
               <SSLAlert className="size-12 text-muted-foreground mb-4 opacity-50" />
               <CardTitle>No SSL Analysis Found</CardTitle>
@@ -411,6 +436,15 @@ export default function AssetDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-6 md:grid-cols-12">
+              {/* Re-scan button + last scanned info */}
+              <div className="md:col-span-12 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {sslScannedAt ? <>Last scanned: <span className="font-medium text-foreground">{sslScannedAt}</span></> : null}
+                </p>
+                <Button variant="outline" size="sm" onClick={handleRunSslScan} className="gap-2" disabled={isSslScanning}>
+                  <Activity className="size-3.5" /> Re-run Scan
+                </Button>
+              </div>
               {/* Grade and Metrics */}
               <Card className="md:col-span-4 bg-muted/20">
                 <CardHeader className="text-center">

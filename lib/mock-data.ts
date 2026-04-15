@@ -1,4 +1,4 @@
-// centralized mock data for cyb-ui
+// centralized mock data for Qshield-ui
 
 export const targetsData = [
   {
@@ -162,7 +162,7 @@ export const assets = [
     overallScore: 65,
     uptimePercentage: 99.90,
     vulnerabilities: [
-       { id: "CVE-2022-XXXX", title: "Storage Access Policy Misconfig", description: "Open bucket policy detected.", cvss: 6.5, severity: "Medium" }
+      { id: "CVE-2022-XXXX", title: "Storage Access Policy Misconfig", description: "Open bucket policy detected.", cvss: 6.5, severity: "Medium" }
     ],
     exposedServices: [
       { port: 22, protocol: "TCP", serviceName: "SSH", state: "Active", isVulnerable: false }
@@ -295,7 +295,7 @@ export const initialNodes = [
   // Core Assets
   { id: 'ast-1', type: 'asset', position: { x: 400, y: 100 }, data: { targetId: "TGT-001", id: "AST-002", name: "Web API Gateway", ip: "10.42.1.205" } },
   { id: 'ast-2', type: 'asset', position: { x: 100, y: 100 }, data: { targetId: "TGT-001", id: "AST-001", name: "Primary Database Server", ip: "192.168.1.10" } },
-  
+
   // Attached Services - API Gateway
   { id: 'srv-1', type: 'service', position: { x: 300, y: 300 }, data: { targetId: "TGT-001", label: "HTTPS / API", type: "HTTP", port: 443, risk: 10 } },
   { id: 'srv-2', type: 'service', position: { x: 500, y: 300 }, data: { targetId: "TGT-001", label: "Legacy HTTP", type: "Unencrypted", port: 80, risk: 85 } },

@@ -26,7 +26,7 @@ export default function TargetsPage() {
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    document.title = "Monitored Targets | CYB Dashboard";
+    document.title = "Monitored Targets | Qshield Dashboard";
   }, []);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -105,83 +105,83 @@ export default function TargetsPage() {
               // Calculate real counts from global data based on Agent scans
               const targetId = String(target._id || target.id || `temp-${index}`);
               const realAssetsCount = data.assets.filter(a => String(a.targetId) === targetId).length;
-              
+
               return (
-              <TableRow 
-                key={targetId} 
-                className="hover:bg-muted/50 cursor-pointer"
-                onClick={() => router.push(`/targets/${targetId}`)}
-              >
-                <TableCell>
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-primary/10 rounded-md">
-                      <Building2 className="size-4 text-primary" />
+                <TableRow
+                  key={targetId}
+                  className="hover:bg-muted/50 cursor-pointer"
+                  onClick={() => router.push(`/targets/${targetId}`)}
+                >
+                  <TableCell>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-primary/10 rounded-md">
+                        <Building2 className="size-4 text-primary" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{target.organizationName || target.name}</span>
+                        <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+                          <Globe className="size-3" /> {target.primaryDomain || target.domain || target.ipRange}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-semibold">{target.organizationName || target.name}</span>
-                      <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                        <Globe className="size-3" /> {target.primaryDomain || target.domain || target.ipRange}
-                      </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm">{target.industry || target.riskLevel || 'Unknown'}</span>
+                      <Badge variant="outline" className="w-fit text-[10px]">
+                        +{target.domainsCount || 0} Subdomains
+                      </Badge>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm">{target.industry || target.riskLevel || 'Unknown'}</span>
-                    <Badge variant="outline" className="w-fit text-[10px]">
-                      +{target.domainsCount || 0} Subdomains
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {target.status === "Scanning" && <Activity className="size-4 text-amber-500 animate-pulse" />}
-                    {(target.status === "Idle" || target.status === "Active") && <Server className="size-4 text-emerald-500" />}
-                    {target.status === "Paused" && <Pause className="size-4 text-muted-foreground" />}
-                    
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-medium ${
-                        target.status === 'Scanning' ? 'text-amber-500' :
-                        (target.status === 'Idle' || target.status === 'Active') ? 'text-emerald-500' : 'text-muted-foreground'
-                      }`}>
-                        {target.status || 'Active'}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">Ran {target.lastCompleted || 'Recently'}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {target.status === "Scanning" && <Activity className="size-4 text-amber-500 animate-pulse" />}
+                      {(target.status === "Idle" || target.status === "Active") && <Server className="size-4 text-emerald-500" />}
+                      {target.status === "Paused" && <Pause className="size-4 text-muted-foreground" />}
+
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-medium ${target.status === 'Scanning' ? 'text-amber-500' :
+                            (target.status === 'Idle' || target.status === 'Active') ? 'text-emerald-500' : 'text-muted-foreground'
+                          }`}>
+                          {target.status || 'Active'}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">Ran {target.lastCompleted || 'Recently'}</span>
+                      </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-center">
-                  <div className="inline-flex items-center justify-center bg-muted px-2.5 py-0.5 rounded-full text-xs font-bold font-mono">
-                    {realAssetsCount > 0 ? realAssetsCount : (target.assets || 0)}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="size-8"
-                      title="Toggle Scan Engine"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      {target.status === "Paused" ? <Play className="size-4 text-emerald-500" /> : <Pause className="size-4 text-muted-foreground" />}
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      disabled={isDeleting === targetId}
-                      title="Delete Target"
-                      onClick={(e) => handleDelete(e, targetId)}
-                    >
-                      <Trash2 className={`size-4 ${isDeleting === targetId ? 'animate-pulse' : ''}`} />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )})}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="inline-flex items-center justify-center bg-muted px-2.5 py-0.5 rounded-full text-xs font-bold font-mono">
+                      {realAssetsCount > 0 ? realAssetsCount : (target.assets || 0)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        title="Toggle Scan Engine"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        {target.status === "Paused" ? <Play className="size-4 text-emerald-500" /> : <Pause className="size-4 text-muted-foreground" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        disabled={isDeleting === targetId}
+                        title="Delete Target"
+                        onClick={(e) => handleDelete(e, targetId)}
+                      >
+                        <Trash2 className={`size-4 ${isDeleting === targetId ? 'animate-pulse' : ''}`} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       </div>

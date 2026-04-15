@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { GlobalDataProvider } from "@/app/context/GlobalDataContext"
 import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -17,7 +17,7 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "CYB Dashboard | Intelligence Reconnaissance",
+  title: "QSHIELD  Dashboard | Intelligence Reconnaissance",
   description: "Advanced AI-driven security reconnaissance and attack surface management.",
   icons: {
     icon: "/icon.png",
@@ -41,26 +41,26 @@ export default function RootLayout({
     >
       <body>
         <AuthProvider>
-        <GlobalDataProvider>
-          <ThemeProvider>
-            <TooltipProvider>
-              {/* Note: The Sidebar logic will handle its own visibility or we can wrap conditional logic here if it were a client component */}
-              <SidebarProvider>
-                <AppSidebar />
-              <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-                  <div className="flex items-center gap-2 px-4">
-                    <SidebarTrigger className="-ml-1" />
-                  </div>
-                </header>
-                <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-                  {children}
-                </div>
-              </SidebarInset>
-            </SidebarProvider>
-          </TooltipProvider>
-        </ThemeProvider>
-        </GlobalDataProvider>
+          <GlobalDataProvider>
+            <ThemeProvider>
+              <TooltipProvider>
+                {/* Note: The Sidebar logic will handle its own visibility or we can wrap conditional logic here if it were a client component */}
+                <SidebarProvider>
+                  <AppSidebar />
+                  <SidebarInset>
+                    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+                      <div className="flex items-center gap-2 px-4">
+                        <SidebarTrigger className="-ml-1" />
+                      </div>
+                    </header>
+                    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+                      {children}
+                    </div>
+                  </SidebarInset>
+                </SidebarProvider>
+              </TooltipProvider>
+            </ThemeProvider>
+          </GlobalDataProvider>
         </AuthProvider>
       </body>
     </html>

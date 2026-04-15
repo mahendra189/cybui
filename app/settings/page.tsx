@@ -24,7 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default function SettingsPage() {
   const [theme, setTheme] = React.useState("dark")
-  
+
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8 max-w-6xl mx-auto w-full">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -53,26 +53,26 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
               <CardDescription>
-                Customize how the Cyb UI looks on your device.
+                Customize how the Qshield UI looks on your device.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4">
-                <Button 
+                <Button
                   variant={theme === "light" ? "default" : "outline"}
                   onClick={() => setTheme("light")}
                   className="w-32 justify-start gap-2"
                 >
                   <Sun className="size-4" /> Light
                 </Button>
-                <Button 
+                <Button
                   variant={theme === "dark" ? "default" : "outline"}
                   onClick={() => setTheme("dark")}
                   className="w-32 justify-start gap-2"
                 >
                   <Moon className="size-4" /> Dark
                 </Button>
-                <Button 
+                <Button
                   variant={theme === "system" ? "default" : "outline"}
                   onClick={() => setTheme("system")}
                   className="w-32 justify-start gap-2"
@@ -135,7 +135,7 @@ export default function SettingsPage() {
 
               <div className="space-y-4 pt-4 border-t">
                 <h3 className="text-sm font-semibold flex items-center gap-2"><Activity className="size-4 text-primary" /> Active Module Targets</h3>
-                
+
                 <div className="flex items-center space-x-3 border rounded-md p-3">
                   <input type="checkbox" className="h-4 w-4 bg-background border-primary" defaultChecked />
                   <div className="flex flex-col">
@@ -167,10 +167,10 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-1 text-sm font-medium">
-                  <span className="flex items-center gap-2"><ShieldAlert className="size-4 text-destructive"/> Critical Threshold Boundary</span>
+                  <span className="flex items-center gap-2"><ShieldAlert className="size-4 text-destructive" /> Critical Threshold Boundary</span>
                   <span className="tabular-nums font-mono">75</span>
                 </div>
                 <input type="range" min="0" max="100" defaultValue="75" className="w-full accent-destructive w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer" />
@@ -181,7 +181,7 @@ export default function SettingsPage() {
 
               <div className="space-y-4 pt-4 border-t">
                 <div className="flex justify-between items-center mb-1 text-sm font-medium">
-                  <span className="flex items-center gap-2"><ShieldAlert className="size-4 text-amber-500"/> Elevated/Warning Boundary</span>
+                  <span className="flex items-center gap-2"><ShieldAlert className="size-4 text-amber-500" /> Elevated/Warning Boundary</span>
                   <span className="tabular-nums font-mono">40</span>
                 </div>
                 <input type="range" min="0" max="100" defaultValue="40" className="w-full accent-amber-500 w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer" />

@@ -83,7 +83,7 @@ export default function PortsPage() {
   }, [selectedTarget, globalData.targets]);
 
   React.useEffect(() => {
-    document.title = `Network Ports - ${selectedTargetName} | CYB Dashboard`;
+    document.title = `Network Ports - ${selectedTargetName} | Qshield Dashboard`;
   }, [selectedTargetName]);
 
   const toggleRow = (id: string) => {
@@ -122,8 +122,8 @@ export default function PortsPage() {
             Network Ports {selectedTarget !== "all" && <span className="text-primary/60">— {selectedTargetName}</span>}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 text-balance">
-            {selectedTarget === "all" 
-              ? "Analyze global port exposures, service status, and vulnerability vectors." 
+            {selectedTarget === "all"
+              ? "Analyze global port exposures, service status, and vulnerability vectors."
               : `Port exposure analysis for ${selectedTargetName}.`}
           </p>
         </div>

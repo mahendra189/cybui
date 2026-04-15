@@ -50,7 +50,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 flex items-center justify-center bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] pointer-events-none"></div>
       <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-0 -right-4 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl animate-pulse delay-700"></div>
-      
+
       <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500 relative z-10">
         <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/50 to-primary animate-pulse"></div>
         <CardHeader className="space-y-1 text-center pt-8">
@@ -59,7 +59,7 @@ export default function LoginPage() {
               <Bot className="size-10 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-black tracking-tight text-foreground uppercase tracking-tighter">CYB Control</CardTitle>
+          <CardTitle className="text-3xl font-black tracking-tight text-foreground uppercase tracking-tighter">Qshield Control</CardTitle>
           <CardDescription className="text-muted-foreground font-medium tracking-tight">Access restricted to authorized personnel</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 pt-4">
@@ -73,14 +73,14 @@ export default function LoginPage() {
                 </AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Terminal ID (Email)</Label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-3 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                   id="email"
-                  placeholder="agent@cyb-ops.com"
+                  placeholder="agent@Qshield-ops.com"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -89,7 +89,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Access Key</Label>
               <div className="relative group">
@@ -127,8 +127,8 @@ export default function LoginPage() {
             Level 3 Security Clearance Active
           </p>
           <div className="text-sm text-center">
-             <span className="text-muted-foreground">Need access?</span>{" "}
-             <Link href="/register" className="text-primary hover:text-primary/80 font-bold transition-colors">Request Authorization</Link>
+            <span className="text-muted-foreground">Need access?</span>{" "}
+            <Link href="/register" className="text-primary hover:text-primary/80 font-bold transition-colors">Request Authorization</Link>
           </div>
         </CardFooter>
       </Card>

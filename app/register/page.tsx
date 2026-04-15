@@ -58,7 +58,7 @@ export default function RegisterPage() {
       <div className="absolute inset-0 flex items-center justify-center bg-background [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] pointer-events-none"></div>
       <div className="absolute top-0 -left-4 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-0 -right-4 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse delay-700"></div>
-      
+
       <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
         <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-primary to-emerald-500/50"></div>
         <CardHeader className="space-y-1 text-center pt-8">
@@ -97,14 +97,14 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Terminal ID (Email)</Label>
               <div className="relative group">
                 <Mail className="absolute left-3 top-3 size-4 text-muted-foreground group-focus-within:text-emerald-500 transition-colors" />
                 <Input
                   id="email"
-                  placeholder="agent@cyb-ops.com"
+                  placeholder="agent@Qshield-ops.com"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -113,7 +113,7 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password" className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Security Access Key</Label>
               <div className="relative group">
@@ -129,7 +129,7 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Operational Role</Label>
               <Select value={role} onValueChange={setRole}>
@@ -162,8 +162,8 @@ export default function RegisterPage() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4 pb-8 border-t border-border/50 pt-6 bg-muted/20">
           <div className="text-sm text-center">
-             <span className="text-muted-foreground">Already authorized?</span>{" "}
-             <Link href="/login" className="text-emerald-500 hover:text-emerald-400 font-bold transition-colors">Return to Login</Link>
+            <span className="text-muted-foreground">Already authorized?</span>{" "}
+            <Link href="/login" className="text-emerald-500 hover:text-emerald-400 font-bold transition-colors">Return to Login</Link>
           </div>
         </CardFooter>
       </Card>

@@ -31,7 +31,7 @@ import {
 const navData = {
   teams: [
     {
-      name: "CYB",
+      name: "Qshield",
       logo: Shield,
       plan: "Security Intelligence",
     },

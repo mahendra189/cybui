@@ -37,18 +37,18 @@ function Sparkline({ data, score }: { data: number[], score: number }) {
   const min = 0;
   const range = max - min;
   const points = data.map((val, i) => `${(i / (data.length - 1)) * 100},${100 - ((val - min) / range) * 100}`).join(" ");
-  
+
   const strokeColor = score >= 75 ? "stroke-destructive" : score >= 40 ? "stroke-amber-500" : "stroke-emerald-500";
 
   return (
     <svg viewBox="0 0 100 100" className="w-16 h-8 overflow-visible" preserveAspectRatio="none">
-      <polyline 
-        points={points} 
-        fill="none" 
-        strokeWidth="12" 
-        className={`${strokeColor} transition-all duration-500`} 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
+      <polyline
+        points={points}
+        fill="none"
+        strokeWidth="12"
+        className={`${strokeColor} transition-all duration-500`}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   )
@@ -98,7 +98,7 @@ export default function ServicesPage() {
   }, [selectedTarget, globalData.targets]);
 
   React.useEffect(() => {
-    document.title = `Services - ${selectedTargetName} | CYB Dashboard`;
+    document.title = `Services - ${selectedTargetName} | Qshield Dashboard`;
   }, [selectedTargetName]);
 
   const toggleRow = (id: string) => {
@@ -124,9 +124,9 @@ export default function ServicesPage() {
     return processedServices.filter(
       (s) => {
         const matchesTarget = selectedTarget === "all" || s.targetId === selectedTarget
-        const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                              s.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              s.version.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.version.toLowerCase().includes(searchQuery.toLowerCase())
         return matchesTarget && matchesSearch
       }
     )
@@ -140,13 +140,13 @@ export default function ServicesPage() {
             Services Inventory {selectedTarget !== "all" && <span className="text-primary/60">— {selectedTargetName}</span>}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 text-balance">
-            {selectedTarget === "all" 
-              ? "Analyze risk scores, active trends, and discover dependencies per service." 
+            {selectedTarget === "all"
+              ? "Analyze risk scores, active trends, and discover dependencies per service."
               : `Service risk and trend analysis for ${selectedTargetName}.`}
           </p>
-         </div>
+        </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <select 
+          <select
             className="flex h-9 w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"
             value={selectedTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}
@@ -201,7 +201,7 @@ export default function ServicesPage() {
               filteredServices.map((service) => (
                 <React.Fragment key={service.id}>
                   {/* Main Row */}
-                  <TableRow 
+                  <TableRow
                     className="cursor-pointer group hover:bg-muted/50 transition-colors"
                     onClick={() => toggleRow(service.id)}
                   >

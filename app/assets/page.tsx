@@ -60,14 +60,14 @@ export default function AssetsPage() {
   }, [selectedTarget, globalData.targets]);
 
   React.useEffect(() => {
-    document.title = `Assets - ${selectedTargetName} | CYB Dashboard`;
+    document.title = `Assets - ${selectedTargetName} | Qshield Dashboard`;
   }, [selectedTargetName]);
 
   const filteredAssets = React.useMemo(() => {
     if (!searchQuery) return pagedAssets;
     return pagedAssets.filter((a) => {
-      return (a.name || a.deviceName || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
-             (a.type || "").toLowerCase().includes(searchQuery.toLowerCase())
+      return (a.name || a.deviceName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (a.type || "").toLowerCase().includes(searchQuery.toLowerCase())
     })
   }, [pagedAssets, searchQuery])
 
@@ -79,13 +79,13 @@ export default function AssetsPage() {
             Assets Inventory {selectedTarget !== "all" && <span className="text-primary/60">— {selectedTargetName}</span>}
           </h1>
           <p className="text-sm text-muted-foreground mt-1 text-balance">
-            {selectedTarget === "all" 
-              ? "A comprehensive list of all discovered external and internal assets." 
+            {selectedTarget === "all"
+              ? "A comprehensive list of all discovered external and internal assets."
               : `Discovered attack surface for ${selectedTargetName}.`}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <select 
+          <select
             className="flex h-9 w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"
             value={selectedTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}

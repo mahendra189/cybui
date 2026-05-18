@@ -1,4 +1,4 @@
-// centralized mock data for Qshield-ui
+// centralized mock data for INIDS-ui
 
 export const targetsData = [
   {

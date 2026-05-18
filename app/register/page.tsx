@@ -104,7 +104,7 @@ export default function RegisterPage() {
                 <Mail className="absolute left-3 top-3 size-4 text-muted-foreground group-focus-within:text-emerald-500 transition-colors" />
                 <Input
                   id="email"
-                  placeholder="agent@Qshield-ops.com"
+                  placeholder="agent@inids-ops.com"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

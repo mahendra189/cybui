@@ -53,7 +53,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
               <CardDescription>
-                Customize how the Qshield UI looks on your device.
+                Customize how the INIDS UI looks on your device.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
                   <span className="flex items-center gap-2"><ShieldAlert className="size-4 text-destructive" /> Critical Threshold Boundary</span>
                   <span className="tabular-nums font-mono">75</span>
                 </div>
-                <input type="range" min="0" max="100" defaultValue="75" className="w-full accent-destructive w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer" />
+                <input type="range" min="0" max="100" defaultValue="75" className="w-full accent-destructive h-2 bg-muted rounded-lg appearance-none cursor-pointer" />
                 <p className="text-[10px] text-muted-foreground">
                   Scores equal to or exceeding this line denote critical infrastructure peril.
                 </p>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                   <span className="flex items-center gap-2"><ShieldAlert className="size-4 text-amber-500" /> Elevated/Warning Boundary</span>
                   <span className="tabular-nums font-mono">40</span>
                 </div>
-                <input type="range" min="0" max="100" defaultValue="40" className="w-full accent-amber-500 w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer" />
+                <input type="range" min="0" max="100" defaultValue="40" className="w-full accent-amber-500 h-2 bg-muted rounded-lg appearance-none cursor-pointer" />
                 <p className="text-[10px] text-muted-foreground">
                   Scores bridging this line up to Critical will display as Warnings.
                 </p>
@@ -228,7 +228,7 @@ export default function SettingsPage() {
                   <TableBody>
                     <TableRow className="hover:bg-muted/20">
                       <TableCell className="font-semibold">GitHub Actions CI Pipeline</TableCell>
-                      <TableCell className="font-mono text-xs">cyb_sec_w8A...</TableCell>
+                      <TableCell className="font-mono text-xs">inids_sec_w8A...</TableCell>
                       <TableCell><Badge variant="outline" className="text-[10px]">Read & Write</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">11 days ago</TableCell>
                       <TableCell className="text-right">
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                     </TableRow>
                     <TableRow className="hover:bg-muted/20">
                       <TableCell className="font-semibold">External SOC Stream</TableCell>
-                      <TableCell className="font-mono text-xs">cyb_sec_0q1...</TableCell>
+                      <TableCell className="font-mono text-xs">inids_sec_0q1...</TableCell>
                       <TableCell><Badge variant="outline" className="bg-muted text-[10px]">Read-Only</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">2 months ago</TableCell>
                       <TableCell className="text-right">

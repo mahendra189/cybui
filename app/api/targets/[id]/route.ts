@@ -16,7 +16,7 @@ export async function DELETE(
 
     const targetIdString = String(id);
     const client = await clientPromise;
-    const db = client.db('cyb_dashboard');
+    const db = client.db('inids_dashboard');
 
     console.log(`>>> DELETING TARGET [${targetIdString}]`);
 

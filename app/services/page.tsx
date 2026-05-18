@@ -98,7 +98,7 @@ export default function ServicesPage() {
   }, [selectedTarget, globalData.targets]);
 
   React.useEffect(() => {
-    document.title = `Services - ${selectedTargetName} | Qshield Dashboard`;
+    document.title = `Services - ${selectedTargetName} | INIDS Dashboard`;
   }, [selectedTargetName]);
 
   const toggleRow = (id: string) => {

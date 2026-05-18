@@ -59,7 +59,7 @@ export default function LoginPage() {
               <Bot className="size-10 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-black tracking-tight text-foreground uppercase tracking-tighter">Qshield Control</CardTitle>
+          <CardTitle className="text-3xl font-black tracking-tight text-foreground uppercase tracking-tighter">INIDS Control</CardTitle>
           <CardDescription className="text-muted-foreground font-medium tracking-tight">Access restricted to authorized personnel</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 pt-4">
@@ -80,7 +80,7 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-3 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                   id="email"
-                  placeholder="agent@Qshield-ops.com"
+                  placeholder="agent@inids-ops.com"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

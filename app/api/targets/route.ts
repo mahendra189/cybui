@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const payload = await request.json();
     const client = await clientPromise;
-    const db = client.db('cyb_dashboard');
+    const db = client.db('inids_dashboard');
     
     // Default shape based on the app UI expected data
     const newTarget = {

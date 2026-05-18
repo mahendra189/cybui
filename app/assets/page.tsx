@@ -60,7 +60,7 @@ export default function AssetsPage() {
   }, [selectedTarget, globalData.targets]);
 
   React.useEffect(() => {
-    document.title = `Assets - ${selectedTargetName} | Qshield Dashboard`;
+    document.title = `Assets - ${selectedTargetName} | INIDS Dashboard`;
   }, [selectedTargetName]);
 
   const filteredAssets = React.useMemo(() => {

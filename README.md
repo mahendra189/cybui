@@ -1,6 +1,6 @@
-# CYB Infrastructure Dashboard
+# INIDS Infrastructure Dashboard
 
-This is the Next.js frontend and API layer for the CYB Infrastructure Dashboard. It interfaces with MongoDB to present structured data regarding monitoring targets, assets, exposed services, and network topologies.
+This is the Next.js frontend and API layer for the INIDS Infrastructure Dashboard. It interfaces with MongoDB to present structured data regarding monitoring targets, assets, exposed services, and network topologies.
 
 ## Information Architecture
 
@@ -29,7 +29,7 @@ graph TD
 
 ## Database Schema (MongoDB)
 
-The data is persisted in MongoDB (`cyb_dashboard` database). The entity relationships below describe how targets own assets, which in turn expose services and bind to specific ports.
+The data is persisted in MongoDB (`inids_dashboard` database). The entity relationships below describe how targets own assets, which in turn expose services and bind to specific ports.
 
 ```mermaid
 erDiagram

@@ -59,7 +59,7 @@ export default function TargetDetailPage() {
 
   React.useEffect(() => {
     if (targetName) {
-      document.title = `${targetName} - Intelligence | Qshield Dashboard`;
+      document.title = `${targetName} - Intelligence | INIDS Dashboard`;
     }
   }, [targetName]);
 
@@ -366,7 +366,7 @@ export default function TargetDetailPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6 p-4 md:p-8 max-w-[1600px] mx-auto w-full">
+    <div className="flex h-full flex-col gap-6 p-4 md:p-8 max-w-400 mx-auto w-full">
 
       {/* 1. Header: Live Summary and Info */}
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between bg-card border rounded-lg p-6 shadow-sm">
@@ -400,7 +400,7 @@ export default function TargetDetailPage() {
           {session?.user?.role !== "customer" && (
             <div className="flex items-center gap-2">
               <Select value={scanMode} onValueChange={setScanMode}>
-                <SelectTrigger className="w-[130px] h-9 bg-muted/50 border-muted text-xs font-bold uppercase tracking-tight">
+                <SelectTrigger className="w-32.5 h-9 bg-muted/50 border-muted text-xs font-bold uppercase tracking-tight">
                   <SelectValue placeholder="Mode" />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
@@ -504,7 +504,7 @@ export default function TargetDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
 
         {/* Left Column: Dynamic Sections */}
-        <div className="lg:col-span-2 flex flex-col h-[750px] bg-card border rounded-lg shadow-sm overflow-hidden">
+        <div className="lg:col-span-2 flex flex-col h-187.5 bg-card border rounded-lg shadow-sm overflow-hidden">
           <Tabs defaultValue="subdomains" className="flex flex-col w-full h-full">
             <div className="border-b px-4 py-3 bg-muted/10 overflow-x-auto">
               <TabsList className="bg-muted/50 border flex w-max h-auto">
@@ -659,7 +659,7 @@ export default function TargetDetailPage() {
         </div>
 
         {/* Right Column: Interactive Agent Terminal */}
-        <div className="flex flex-col h-[750px] bg-card border rounded-lg shadow-xl overflow-hidden text-foreground">
+        <div className="flex flex-col h-187.5 bg-card border rounded-lg shadow-xl overflow-hidden text-foreground">
           <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
             <div className="flex items-center gap-2">
               <Bot className="size-5 text-primary" />

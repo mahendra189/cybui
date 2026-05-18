@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     const { prompt, targetId, context } = await request.json();
 
-    const SYSTEM_PROMPT = `You are a Senior Security Analyst and Reconnaissance Specialist for the Qshield Dashboard. 
+    const SYSTEM_PROMPT = `You are a Senior Security Analyst and Reconnaissance Specialist for the INIDS Dashboard.
 Your goal is to analyze the attack surface of the target organization based on live discovery data.
 
 CURRENT TARGET: ${context?.target?.name} (${context?.target?.domain})

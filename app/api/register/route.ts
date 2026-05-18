@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const client = await clientPromise;
-    const db = client.db("cyb_dashboard");
+    const db = client.db("inids_dashboard");
 
     const existingUser = await db.collection("users").findOne({ email });
     if (existingUser) {

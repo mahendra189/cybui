@@ -17,7 +17,7 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "QSHIELD  Dashboard | Intelligence Reconnaissance",
+  title: "INIDS Dashboard | Intelligence Reconnaissance",
   description: "Advanced AI-driven security reconnaissance and attack surface management.",
   icons: {
     icon: "/icon.png",

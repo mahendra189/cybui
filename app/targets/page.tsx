@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Building2, Search, Plus, Activity, Play, Pause, Server, Globe, Trash2 } from "lucide-react"
+import { Building2, Search, Activity, Play, Pause, Server, Globe, Trash2, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -19,14 +19,20 @@ import {
 
 import { useGlobalData } from "@/app/context/GlobalDataContext"
 
+async function fetchAndSyncTargets() {
+  const resp = await fetch('/api/targets/scan', { method: 'POST' });
+  if (!resp.ok) throw new Error('Failed to scan network');
+  return resp.json();
+}
 export default function TargetsPage() {
   const router = useRouter()
   const { data, refreshData } = useGlobalData()
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = React.useState(false)
 
   React.useEffect(() => {
-    document.title = "Monitored Targets | Qshield Dashboard";
+    document.title = "Monitored Targets | INIDS Dashboard";
   }, []);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
@@ -54,9 +60,9 @@ export default function TargetsPage() {
   const filteredTargets = React.useMemo(() => {
     return data.targets.filter(
       (t) => {
-        const nameMatch = (t.organizationName || t.name || "").toLowerCase().includes(searchQuery.toLowerCase());
-        const domainMatch = (t.primaryDomain || t.ipRange || "").toLowerCase().includes(searchQuery.toLowerCase());
-        return nameMatch || domainMatch;
+        const ipMatch = (t.ip || "").toLowerCase().includes(searchQuery.toLowerCase());
+        const macMatch = (t.mac || "").toLowerCase().includes(searchQuery.toLowerCase());
+        return ipMatch || macMatch;
       }
     )
   }, [data.targets, searchQuery])
@@ -75,16 +81,25 @@ export default function TargetsPage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search targets..."
+              placeholder="Search by IP or MAC..."
               className="w-full bg-background pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button className="gap-2 shrink-0" asChild>
-            <Link href="/targets/new">
-              <Plus className="size-4" /> Onboard Target
-            </Link>
+          <Button className="gap-2 shrink-0" onClick={async () => {
+            setIsSyncing(true);
+            try {
+              await fetchAndSyncTargets();
+              await refreshData();
+            } catch (e) {
+              alert('Failed to scan and sync targets.');
+            } finally {
+              setIsSyncing(false);
+            }
+          }} disabled={isSyncing}>
+            <RefreshCw className={isSyncing ? 'animate-spin size-4' : 'size-4'} />
+            {isSyncing ? 'Syncing...' : 'Scan Network'}
           </Button>
         </div>
       </div>
@@ -102,15 +117,11 @@ export default function TargetsPage() {
           </TableHeader>
           <TableBody>
             {filteredTargets.map((target, index) => {
-              // Calculate real counts from global data based on Agent scans
               const targetId = String(target._id || target.id || `temp-${index}`);
-              const realAssetsCount = data.assets.filter(a => String(a.targetId) === targetId).length;
-
               return (
                 <TableRow
                   key={targetId}
                   className="hover:bg-muted/50 cursor-pointer"
-                  onClick={() => router.push(`/targets/${targetId}`)}
                 >
                   <TableCell>
                     <div className="flex items-start gap-3">
@@ -118,55 +129,38 @@ export default function TargetsPage() {
                         <Building2 className="size-4 text-primary" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-semibold">{target.organizationName || target.name}</span>
+                        <span className="font-semibold">{target.ip}</span>
                         <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                          <Globe className="size-3" /> {target.primaryDomain || target.domain || target.ipRange}
+                          <Globe className="size-3" /> {target.mac}
                         </span>
+                        {target.hostname && <span className="text-xs text-muted-foreground font-mono">{target.hostname}</span>}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm">{target.industry || target.riskLevel || 'Unknown'}</span>
+                      <span className="text-sm">{target.interface || ''}</span>
                       <Badge variant="outline" className="w-fit text-[10px]">
-                        +{target.domainsCount || 0} Subdomains
+                        {target.network || ''}
                       </Badge>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {target.status === "Scanning" && <Activity className="size-4 text-amber-500 animate-pulse" />}
-                      {(target.status === "Idle" || target.status === "Active") && <Server className="size-4 text-emerald-500" />}
-                      {target.status === "Paused" && <Pause className="size-4 text-muted-foreground" />}
-
+                      {target.alive ? <Server className="size-4 text-emerald-500" /> : <Pause className="size-4 text-muted-foreground" />}
                       <div className="flex flex-col">
-                        <span className={`text-sm font-medium ${target.status === 'Scanning' ? 'text-amber-500' :
-                            (target.status === 'Idle' || target.status === 'Active') ? 'text-emerald-500' : 'text-muted-foreground'
-                          }`}>
-                          {target.status || 'Active'}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">Ran {target.lastCompleted || 'Recently'}</span>
+                        <span className={`text-sm font-medium ${target.alive ? 'text-emerald-500' : 'text-muted-foreground'}`}>{target.alive ? 'Alive' : 'Offline'}</span>
+                        <span className="text-[10px] text-muted-foreground">{target.latency_ms ? `${target.latency_ms} ms` : ''}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="inline-flex items-center justify-center bg-muted px-2.5 py-0.5 rounded-full text-xs font-bold font-mono">
-                      {realAssetsCount > 0 ? realAssetsCount : (target.assets || 0)}
+                      {target.scan_time_seconds ? `${target.scan_time_seconds}s` : ''}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8"
-                        title="Toggle Scan Engine"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        {target.status === "Paused" ? <Play className="size-4 text-emerald-500" /> : <Pause className="size-4 text-muted-foreground" />}
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

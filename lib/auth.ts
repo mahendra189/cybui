@@ -19,7 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         const client = await clientPromise;
-        const db = client.db("cyb_dashboard");
+        const db = client.db("inids_dashboard");
         const user = await db.collection("users").findOne({ email: credentials.email });
 
         if (!user || !user.password) return null;

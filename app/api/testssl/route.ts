@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     }
 
     const client = await clientPromise;
-    const db = client.db("cyb_dashboard");
+    const db = client.db("inids_dashboard");
     const record = await db.collection("ssl_scans").findOne({ assetId });
 
     if (!record) {
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     if (assetId) {
       try {
         const client = await clientPromise;
-        const db = client.db("cyb_dashboard");
+        const db = client.db("inids_dashboard");
         await db.collection("ssl_scans").updateOne(
           { assetId },
           {

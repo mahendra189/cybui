@@ -83,7 +83,7 @@ export default function PortsPage() {
   }, [selectedTarget, globalData.targets]);
 
   React.useEffect(() => {
-    document.title = `Network Ports - ${selectedTargetName} | Qshield Dashboard`;
+    document.title = `Network Ports - ${selectedTargetName} | INIDS Dashboard`;
   }, [selectedTargetName]);
 
   const toggleRow = (id: string) => {

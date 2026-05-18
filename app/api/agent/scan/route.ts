@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     const scanMode = payload.mode || "fast";
 
     const client = await clientPromise;
-    const db = client.db('cyb_dashboard');
+    const db = client.db('inids_dashboard');
 
     // Fetch the target to get the domain
     let targetDoc: any = null;
@@ -286,7 +286,7 @@ export async function POST(request: Request) {
       const targetId = payload.targetId;
       if (targetId) {
         const client = await clientPromise;
-        const db = client.db('cyb_dashboard');
+        const db = client.db('inids_dashboard');
         const targetFilter = {
           $or: [
             { id: targetId },

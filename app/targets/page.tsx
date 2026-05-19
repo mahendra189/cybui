@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Building2, Search, Activity, Play, Pause, Server, Globe, Trash2, RefreshCw } from "lucide-react"
+import { Building2, Search, Activity, Play, Pause, Server, Globe, Trash2, RefreshCw, Zap } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,8 @@ export default function TargetsPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [isDeleting, setIsDeleting] = React.useState<string | null>(null)
   const [isSyncing, setIsSyncing] = React.useState(false)
+  const [isScanning, setIsScanning] = React.useState<Set<string>>(new Set())
+  const [scanProgress, setScanProgress] = React.useState<Record<string, number>>({})
 
   React.useEffect(() => {
     document.title = "Monitored Targets | INIDS Dashboard";
@@ -54,6 +56,48 @@ export default function TargetsPage() {
       alert("An error occurred while deleting.");
     } finally {
       setIsDeleting(null);
+    }
+  };
+
+  const handleScanPorts = async (e: React.MouseEvent, targetId: string, targetIP: string) => {
+    e.stopPropagation();
+    
+    const newScanning = new Set(isScanning);
+    newScanning.add(targetId);
+    setIsScanning(newScanning);
+    setScanProgress(prev => ({ ...prev, [targetId]: 0 }));
+
+    try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setScanProgress(prev => {
+          const current = prev[targetId] || 0;
+          return { ...prev, [targetId]: Math.min(current + Math.random() * 30, 90) };
+        });
+      }, 300);
+
+      const resp = await fetch(`/api/targets/${targetId}/scan`, { method: 'POST' });
+      clearInterval(progressInterval);
+
+      if (resp.ok) {
+        setScanProgress(prev => ({ ...prev, [targetId]: 100 }));
+        await new Promise(r => setTimeout(r, 500));
+        await refreshData();
+      } else {
+        alert("Failed to scan ports for this target.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while scanning.");
+    } finally {
+      const updated = new Set(isScanning);
+      updated.delete(targetId);
+      setIsScanning(updated);
+      setScanProgress(prev => {
+        const copy = { ...prev };
+        delete copy[targetId];
+        return copy;
+      });
     }
   };
 
@@ -134,6 +178,7 @@ export default function TargetsPage() {
               <TableHead>Scope Context</TableHead>
               <TableHead>Engine Status</TableHead>
               <TableHead className="text-center">Assets Mapped</TableHead>
+              <TableHead className="text-center">Open Ports</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -184,8 +229,41 @@ export default function TargetsPage() {
                       {target.scan_time_seconds ? `${target.scan_time_seconds}s` : ''}
                     </div>
                   </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      {isScanning.has(targetId) ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="relative h-5 w-12 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary transition-all duration-200"
+                              style={{ width: `${scanProgress[targetId] || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground font-mono">{Math.round(scanProgress[targetId] || 0)}%</span>
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className={`text-[10px] px-2 py-0.5 ${target.open_ports && target.open_ports.length > 0 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-muted'}`}>
+                          {target.open_ports ? target.open_ports.length : 0} ports
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-8"
+                        disabled={isScanning.has(targetId) || !target.alive}
+                        title={!target.alive ? "Device is offline" : "Scan Ports"}
+                        onClick={(e) => handleScanPorts(e, targetId, target.ip)}
+                      >
+                        {isScanning.has(targetId) ? (
+                          <Activity className="size-4 animate-spin" />
+                        ) : (
+                          <Zap className="size-4" />
+                        )}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

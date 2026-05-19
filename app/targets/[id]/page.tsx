@@ -78,6 +78,40 @@ export default function TargetDetailPage() {
   const [simulatedProgress, setSimulatedProgress] = React.useState(0);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = React.useState(false);
+  const [isPortScanning, setIsPortScanning] = React.useState(false);
+
+  const handleScanPorts = async () => {
+    setIsPortScanning(true);
+    setChatMessages(prev => [
+      ...prev,
+      { role: 'agent', content: `Initiating port scan for ${rawTarget?.ip}...`, type: 'log' }
+    ]);
+
+    try {
+      const resp = await fetch(`/api/targets/${targetId}/scan`, { method: 'POST' });
+      if (resp.ok) {
+        const result = await resp.json();
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'agent', content: `Port scan complete. Discovered ${result.open_ports?.length || 0} open ports.`, type: 'log' }
+        ]);
+        await refreshData();
+      } else {
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'agent', content: 'Port scan failed. Service unavailable.', type: 'log' }
+        ]);
+      }
+    } catch (err) {
+      console.error(err);
+      setChatMessages(prev => [
+        ...prev,
+        { role: 'agent', content: 'Error during port scan operation.', type: 'log' }
+      ]);
+    } finally {
+      setIsPortScanning(false);
+    }
+  };
 
   const handleDeleteTarget = async () => {
     if (!window.confirm("Are you sure you want to PERMANENTLY remove this target and all its associated scan results?")) {
@@ -391,6 +425,71 @@ export default function TargetDetailPage() {
     <div className="flex h-full flex-col gap-6 p-4 md:p-8 max-w-400 mx-auto w-full">
 
       {/* Device Info Section */}
+      <div className="flex flex-col gap-6 bg-card border rounded-lg p-6 shadow-sm">
+        {/* Network Scan Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+          <div className="bg-muted/50 rounded-lg p-4 text-center">
+            <div className="text-xs text-muted-foreground mb-1 font-semibold uppercase">Open Ports</div>
+            <div className="text-2xl font-bold text-primary">{targetPorts.length}</div>
+            <div className="text-xs text-muted-foreground mt-1">Discovered</div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-4 text-center">
+            <div className="text-xs text-muted-foreground mb-1 font-semibold uppercase">Services</div>
+            <div className="text-2xl font-bold text-emerald-500">{targetServices.length}</div>
+            <div className="text-xs text-muted-foreground mt-1">Identified</div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-4 text-center">
+            <div className="text-xs text-muted-foreground mb-1 font-semibold uppercase">Status</div>
+            <div className={`text-2xl font-bold ${target.alive ? 'text-emerald-500' : 'text-gray-500'}`}>
+              {target.alive ? 'Online' : 'Offline'}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">{target.latency_ms}ms ping</div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-4 text-center">
+            <div className="text-xs text-muted-foreground mb-1 font-semibold uppercase">OS Guess</div>
+            <div className="text-sm font-bold truncate">{target.os_guess || 'Unknown'}</div>
+            <div className="text-xs text-muted-foreground mt-1">{target.device_type || 'Device'}</div>
+          </div>
+        </div>
+
+        {/* Scan Controls */}
+        <div className="flex gap-2 pt-2">
+          <Button
+            className="gap-2 flex-1"
+            onClick={handleScanPorts}
+            disabled={isPortScanning || !target.alive}
+          >
+            {isPortScanning ? (
+              <>
+                <Activity className="size-4 animate-spin" />
+                Scanning Ports...
+              </>
+            ) : (
+              <>
+                <Zap className="size-4" />
+                Scan Open Ports
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Port Scan Progress (Only visible during port scan) */}
+      {isPortScanning && (
+        <div className="bg-card/50 backdrop-blur border border-primary/20 rounded-lg p-5 shadow-inner animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+            </div>
+            <p className="text-sm font-semibold tracking-tight uppercase">Port Scanning in Progress...</p>
+          </div>
+          <Progress value={75} className="h-2 bg-muted shadow-inner" />
+          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter mt-2">Probing common ports...</p>
+        </div>
+      )}
+
+      {/* Device Info Section - Keep packet capture here */}
       <div className="flex flex-col gap-6 bg-card border rounded-lg p-6 shadow-sm">
         <div className="flex gap-5 items-center">
           <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 shadow-inner">

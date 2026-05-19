@@ -240,18 +240,40 @@ export default function TargetDetailPage() {
     )
   }
 
-  // Gracefully conform MongoDB object to UI requirements
+  // Device info for scanned device
   const target = {
     ...rawTarget,
-    organizationName: rawTarget.organizationName || rawTarget.name || "Unknown Target",
-    primaryDomain: rawTarget.domain || rawTarget.primaryDomain || "unknown.com",
+    ip: rawTarget.ip,
+    mac: rawTarget.mac,
+    hostname: rawTarget.hostname,
+    latency_ms: rawTarget.latency_ms,
+    alive: rawTarget.alive,
+    interface: rawTarget.interface,
+    local_ip: rawTarget.local_ip,
+    subnet_mask: rawTarget.subnet_mask,
+    network: rawTarget.network,
+    scan_time_seconds: rawTarget.scan_time_seconds,
+    createdAt: rawTarget.createdAt,
   };
 
-  // Derive live counts from global data relationships strictly scoped to this target! 
-  // No dummy data overlays here!
-  const targetAssets = data.assets.filter(a => String(a.targetId) === String(targetId));
-  const targetPorts = data.ports.filter(p => String(p.targetId) === String(targetId));
-  const targetServices = data.services.filter(s => String(s.targetId) === String(targetId));
+  // For scanned devices, show only this device's info
+  const targetAssets = [];
+  const targetPorts = [];
+  const targetServices = [];
+
+  // Packet capture state (mocked for now)
+  const [packets, setPackets] = React.useState<string[]>([]);
+  const [isCapturing, setIsCapturing] = React.useState(false);
+
+  const handleStartCapture = async () => {
+    setIsCapturing(true);
+    setPackets(["[12:00:01] TCP 192.168.1.5:443 -> 192.168.1.1:51234 SYN", "[12:00:02] UDP 192.168.1.5:53 -> 8.8.8.8:53 DNS Query"]);
+    // In real use, fetch from backend streaming endpoint
+  };
+  const handleStopCapture = () => {
+    setIsCapturing(false);
+    setPackets([]);
+  };
 
   const handleGenerateReport = async () => {
     setIsGeneratingReport(true);
@@ -368,102 +390,43 @@ export default function TargetDetailPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8 max-w-400 mx-auto w-full">
 
-      {/* 1. Header: Live Summary and Info */}
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between bg-card border rounded-lg p-6 shadow-sm">
+      {/* Device Info Section */}
+      <div className="flex flex-col gap-6 bg-card border rounded-lg p-6 shadow-sm">
         <div className="flex gap-5 items-center">
           <div className="p-4 bg-primary/10 rounded-xl border border-primary/20 shadow-inner">
             <Building2 className="size-8 text-primary" />
           </div>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold tracking-tight">{target.organizationName}</h1>
-              <Badge variant="outline" className={`gap-1.5 px-2.5 py-0.5 ${target.status === "Scanning" || isScanning ? "text-amber-500 border-amber-500/30 bg-amber-500/10" : "text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
-                }`}>
-                <span className="relative flex h-2 w-2">
-                  <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${target.status === "Scanning" || isScanning ? "animate-ping bg-amber-400" : "bg-emerald-400"
-                    }`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${target.status === "Scanning" || isScanning ? "bg-amber-500" : "bg-emerald-500"
-                    }`}></span>
-                </span>
-                {target.status === "Scanning" || isScanning ? "Agent Scanning..." : "Agent Active"}
-              </Badge>
+              <h1 className="text-3xl font-extrabold tracking-tight">{target.ip}</h1>
+              <Badge variant="outline" className={`gap-1.5 px-2.5 py-0.5 ${target.alive ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/10" : "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/10"}`}>{target.alive ? "Alive" : "Offline"}</Badge>
             </div>
             <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground font-medium">
-              <span className="flex items-center gap-1.5"><Globe className="size-4" /> {target.primaryDomain}</span>
-              <span className="hidden md:inline text-muted-foreground/30">•</span>
+              <span className="flex items-center gap-1.5"><Globe className="size-4" /> MAC: {target.mac}</span>
+              {target.hostname && <span className="flex items-center gap-1.5">Hostname: {target.hostname}</span>}
               <span className="flex items-center gap-1.5 font-mono text-xs">ID: {targetId}</span>
             </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {session?.user?.role !== "customer" && (
-            <div className="flex items-center gap-2">
-              <Select value={scanMode} onValueChange={setScanMode}>
-                <SelectTrigger className="w-32.5 h-9 bg-muted/50 border-muted text-xs font-bold uppercase tracking-tight">
-                  <SelectValue placeholder="Mode" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="fast" className="text-xs font-bold uppercase tracking-tight">
-                    <div className="flex items-center gap-2">
-                      <Zap className="size-3 text-amber-500" /> Fast
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="medium" className="text-xs font-bold uppercase tracking-tight">
-                    <div className="flex items-center gap-2">
-                      <Search className="size-3 text-primary" /> Medium
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="deep" className="text-xs font-bold uppercase tracking-tight">
-                    <div className="flex items-center gap-2">
-                      <ShieldAlert className="size-3 text-emerald-500" /> Deep
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={handleRunRecon} size="sm" className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20" disabled={isScanning || isDeleting}>
-                <PlayIcon className="size-4" /> Vulnerability Scan
-              </Button>
-              <Button
-                onClick={handleDeleteTarget}
-                variant="outline"
-                size="sm"
-                className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-muted"
-                disabled={isScanning || isDeleting}
-              >
-                <Trash2 className={`size-4 ${isDeleting ? 'animate-pulse' : ''}`} />
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </Button>
+            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-mono">
+              <span>Interface: {target.interface}</span>
+              <span>Local IP: {target.local_ip}</span>
+              <span>Subnet: {target.subnet_mask}</span>
+              <span>Network: {target.network}</span>
+              <span>Scan Time: {target.scan_time_seconds}s</span>
             </div>
-          )}
-          <Button
-            variant="outline"
-            className="gap-2 hidden md:flex"
-            onClick={handleGenerateReport}
-            disabled={isGeneratingReport}
-          >
-            {isGeneratingReport ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
-            {isGeneratingReport ? "Generating..." : "Generate Report"}
-          </Button>
-          <Button variant="outline" className="gap-2 hidden md:flex" asChild>
-            <Link href="/assets">
-              <Server className="size-4" /> View Asset Logs
-            </Link>
-          </Button>
+          </div>
         </div>
-        {/* Live Counter Dashboard */}
-        <div className="flex gap-3 overflow-x-auto pb-2 md:pb-0">
-          <div className="flex flex-col justify-center items-center px-6 py-2 bg-muted/30 border rounded-lg min-w mt-2">
-            <span className="text-2xl font-black tabular-nums text-foreground">{targetAssets.length}</span>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1"><Server className="size-3" /> Assets Discovered</span>
+        {/* Packet Capture UI */}
+        <div className="mt-4">
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-lg font-bold">Live Packet Capture</h2>
+            {!isCapturing ? (
+              <Button size="sm" onClick={handleStartCapture}>Start Capture</Button>
+            ) : (
+              <Button size="sm" variant="destructive" onClick={handleStopCapture}>Stop Capture</Button>
+            )}
           </div>
-          <div className="flex flex-col justify-center items-center px-6 py-2 bg-muted/30 border rounded-lg mt-2">
-            <span className="text-2xl font-black tabular-nums text-foreground">{targetPorts.length}</span>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1"><Network className="size-3" /> Open Ports</span>
-          </div>
-          <div className="flex flex-col justify-center items-center px-6 py-2 bg-muted/30 border rounded-lg mt-2">
-            <span className="text-2xl font-black tabular-nums text-foreground">{targetServices.length}</span>
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider flex items-center gap-1"><HardDrive className="size-3" /> Services Detected</span>
+          <div className="bg-black text-green-400 font-mono text-xs rounded p-3 h-32 overflow-y-auto border border-muted-foreground/20">
+            {isCapturing && packets.length > 0 ? packets.map((pkt, i) => <div key={i}>{pkt}</div>) : <span className="text-muted-foreground">No packets captured yet.</span>}
           </div>
         </div>
       </div>

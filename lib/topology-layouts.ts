@@ -22,7 +22,9 @@ export function getRadialLayout(
     const x = centerX + radius * Math.cos(angle);
     const y = centerY + radius * Math.sin(angle);
 
-    const deviceId = device.id;
+    // Generate unique ID for device
+    const deviceId = device.id || device._id || device.ip || `device-${index}`;
+    
     nodes.push({
       id: deviceId,
       type: "device",
@@ -71,8 +73,10 @@ export function getHierarchicalLayout(
   const nodes: Node[] = [routerNode];
   g.setNode(routerNode.id, { width: 100, height: 100 });
 
-  devices.forEach((device) => {
-    const deviceId = device.id;
+  devices.forEach((device, index) => {
+    // Generate unique ID for device
+    const deviceId = device.id || device._id || device.ip || `device-${index}`;
+    
     nodes.push({
       id: deviceId,
       type: "device",
@@ -95,8 +99,8 @@ export function getHierarchicalLayout(
 
   // Create edges
   const edges: Edge[] = [];
-  devices.forEach((device) => {
-    const deviceId = device.id;
+  devices.forEach((device, index) => {
+    const deviceId = device.id || device._id || device.ip || `device-${index}`;
     g.setEdge(routerNode.id, deviceId);
     edges.push({
       id: `edge-router-${deviceId}`,
@@ -151,7 +155,9 @@ export function getGridLayout(
     const x = startX + col * spacing;
     const y = startY + row * spacing;
 
-    const deviceId = device.id;
+    // Generate unique ID for device
+    const deviceId = device.id || device._id || device.ip || `device-${index}`;
+    
     nodes.push({
       id: deviceId,
       type: "device",

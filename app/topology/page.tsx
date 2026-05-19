@@ -99,18 +99,37 @@ export default function TopologyPage() {
     // Filter devices by network/network interface
     let devices = dbData.targets || [];
     
+    console.log("[Topology] Total devices from targets:", devices.length);
+    if (devices.length > 0) console.log("[Topology] Sample device:", devices[0]);
+    
     if (selectedNetwork !== "all") {
+      const beforeFilter = devices.length;
       devices = devices.filter(d => d.network === selectedNetwork || d.interface === selectedNetwork);
+      console.log(`[Topology] Filtered from ${beforeFilter} to ${devices.length} for network: ${selectedNetwork}`);
     }
 
     if (devices.length === 0) {
+      console.warn("[Topology] No devices found!");
       return { globalNodes: [], globalEdges: [] };
     }
 
     // Find router - heuristic: device with .1 IP or highest probability router
     const routerDevice = devices.find(d => d.ip && d.ip.endsWith('.1')) || 
                          devices.find(d => d.device_type?.toLowerCase().includes('router') || d.device_type?.toLowerCase().includes('gateway')) ||
+                         devices.find(d => d.device_type?.toLowerCase().includes('access point')) ||
                          devices[0];
+
+    if (!routerDevice) {
+      console.error("[Topology] No router device found!");
+      return { globalNodes: [], globalEdges: [] };
+    }
+
+    console.log("[Topology] Router identified:", {
+      ip: routerDevice.ip,
+      hostname: routerDevice.hostname,
+      device_type: routerDevice.device_type,
+      mac: routerDevice.mac
+    });
 
     const routerNode: Node = {
       id: `router-${routerDevice.ip}`,
@@ -127,6 +146,13 @@ export default function TopologyPage() {
 
     // Get other devices to arrange around router
     const otherDevices = devices.filter(d => d.ip !== routerDevice.ip);
+    
+    console.log("[Topology] Router device:", routerDevice.ip, routerDevice.hostname);
+    console.log("[Topology] Other devices to display:", otherDevices.length);
+    if (otherDevices.length > 0) {
+      console.log("[Topology] Sample device to display:", otherDevices[0]);
+    }
+    console.log("[Topology] Layout mode:", layoutMode);
 
     // Apply selected layout algorithm
     let layoutResult;
@@ -143,6 +169,10 @@ export default function TopologyPage() {
         break;
     }
 
+    console.log("[Topology] Final nodes:", layoutResult.nodes.length, "Final edges:", layoutResult.edges.length);
+    if (layoutResult.nodes.length > 0) {
+      console.log("[Topology] All node IDs:", layoutResult.nodes.map(n => ({ id: n.id, type: n.type })));
+    }
     return { globalNodes: layoutResult.nodes, globalEdges: layoutResult.edges };
   }, [dbData.targets, selectedNetwork, layoutMode]);
 
@@ -184,7 +214,7 @@ export default function TopologyPage() {
         <div className="pointer-events-auto">
           <h1 className="text-2xl font-semibold tracking-tight">Network Topology</h1>
           <p className="text-sm text-muted-foreground mt-1 bg-background/80 backdrop-blur rounded px-1 py-0.5 inline-block">
-            Wi-Fi/Router in center with connected devices arranged in a circle.
+            Wi-Fi/Router in center with {globalNodes.length} device{globalNodes.length !== 1 ? 's' : ''} arranged in a circle.
           </p>
         </div>
         <div className="flex items-center gap-3 pointer-events-auto">
@@ -281,6 +311,12 @@ export default function TopologyPage() {
             <div className="flex items-center gap-2">
               <div className="size-2.5 rounded-full bg-gray-500" />
               <span>Device (Offline)</span>
+            </div>
+            <div className="border-t border-muted pt-2 mt-2">
+              <div className="text-xs text-muted-foreground">
+                <div>Total Devices: <span className="font-mono font-semibold text-foreground">{globalNodes.length}</span></div>
+                <div>From Targets: <span className="font-mono font-semibold text-foreground">{dbData.targets?.length || 0}</span></div>
+              </div>
             </div>
           </div>
         </div>

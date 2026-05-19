@@ -67,6 +67,24 @@ export default function TargetsPage() {
     )
   }, [data.targets, searchQuery])
 
+  // Frame devices list for topology
+  const devices = data.targets.map((t) => ({
+    id: t._id || t.id || t.ip,
+    ip: t.ip,
+    mac: t.mac,
+    hostname: t.hostname,
+    alive: t.alive,
+    latency_ms: t.latency_ms,
+    os_guess: t.os_guess,
+    device_type: t.device_type,
+    open_ports: t.open_ports || [],
+    interface: t.interface,
+    network: t.network,
+    isRouter: t.ip === data.targets.find(d => d.ip && d.ip.endsWith('.1'))?.ip // heuristic: .1 is router
+  }));
+
+  // Optionally, expose devices for topology via context or localStorage if needed
+
   return (
     <div className="flex h-full flex-col gap-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -105,6 +123,10 @@ export default function TargetsPage() {
       </div>
 
       <div className="rounded-md border bg-background overflow-x-auto">
+        {/* Devices List for Topology (hidden, but available for topology page) */}
+        <div style={{ display: 'none' }} id="devices-for-topology">
+          {JSON.stringify(devices)}
+        </div>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -130,10 +152,12 @@ export default function TargetsPage() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-semibold">{target.ip}</span>
+                        {target.device_type && <span className="text-xs text-muted-foreground font-mono">{target.device_type}</span>}
                         <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
                           <Globe className="size-3" /> {target.mac}
                         </span>
                         {target.hostname && <span className="text-xs text-muted-foreground font-mono">{target.hostname}</span>}
+                        {target.os_guess && <span className="text-xs text-muted-foreground font-mono">OS: {target.os_guess}</span>}
                       </div>
                     </div>
                   </TableCell>

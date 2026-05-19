@@ -144,6 +144,7 @@ export default function TargetsPage() {
                 <TableRow
                   key={targetId}
                   className="hover:bg-muted/50 cursor-pointer"
+                  onClick={() => router.push(`/targets/${targetId}`)}
                 >
                   <TableCell>
                     <div className="flex items-start gap-3">

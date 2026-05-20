@@ -8,7 +8,6 @@ import {
   Bot,
   Map,
   Settings2,
-  SquareTerminal,
   Network,
   Target,
   Shield,
@@ -47,11 +46,6 @@ const navData = {
       title: "Topology",
       url: "/topology",
       icon: Network,
-    },
-    {
-      title: "Assets",
-      url: "/assets",
-      icon: SquareTerminal,
     },
     {
       title: "Services",

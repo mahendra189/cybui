@@ -80,6 +80,34 @@ export default function TargetDetailPage() {
   const [isGeneratingReport, setIsGeneratingReport] = React.useState(false);
   const [isPortScanning, setIsPortScanning] = React.useState(false);
 
+  // Database-synced ports and services
+  const [dbPorts, setDbPorts] = React.useState<any[]>([]);
+  const [dbServices, setDbServices] = React.useState<any[]>([]);
+  const [isLoadingDetails, setIsLoadingDetails] = React.useState(true);
+
+  const fetchTargetDetails = React.useCallback(async () => {
+    try {
+      const resp = await fetch(`/api/targets/${targetId}/details`);
+      if (resp.ok) {
+        const result = await resp.json();
+        setDbPorts(result.ports || []);
+        setDbServices(result.services || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch target details:', err);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  }, [targetId]);
+
+  React.useEffect(() => {
+    fetchTargetDetails();
+    
+    // Poll for updates every 3 seconds
+    const interval = setInterval(fetchTargetDetails, 3000);
+    return () => clearInterval(interval);
+  }, [fetchTargetDetails]);
+
   const handleScanPorts = async () => {
     setIsPortScanning(true);
     setChatMessages(prev => [
@@ -190,8 +218,7 @@ export default function TargetDetailPage() {
           name: target.organizationName,
           domain: target.primaryDomain
         },
-        assets: targetAssets.map(a => ({ name: a.subdomain || a.name, ip: a.ip })),
-        ports: targetPorts.map(p => ({ port: p.portNumber, protocol: p.protocol, service: p.service })),
+        ports: targetPorts.map(p => ({ port: p.port, protocol: p.protocol, service: p.service })),
         services: targetServices.map(s => ({ name: s.name, version: s.version, port: s.port }))
       };
 
@@ -291,9 +318,11 @@ export default function TargetDetailPage() {
   };
 
   // For scanned devices, show only this device's info
-  const targetAssets = [];
-  const targetPorts = [];
-  const targetServices = [];
+  // Note: targetAssets is no longer used (removed subdomains)
+  
+  // Real-time ports and services from database
+  const targetPorts = dbPorts;
+  const targetServices = dbServices;
 
   // Packet capture state (mocked for now)
   const [packets, setPackets] = React.useState<string[]>([]);
@@ -315,8 +344,7 @@ export default function TargetDetailPage() {
       // 1. Get AI Summary for the report
       const context = {
         target: { name: target.organizationName, domain: target.primaryDomain },
-        assets: targetAssets.map(a => ({ name: a.subdomain || a.name, ip: a.ip })),
-        ports: targetPorts.map(p => ({ port: p.portNumber, protocol: p.protocol, service: p.service })),
+        ports: targetPorts.map(p => ({ port: p.port, protocol: p.protocol, service: p.service })),
         services: targetServices.map(s => ({ name: s.name, version: s.version, port: s.port }))
       };
 
@@ -371,21 +399,19 @@ export default function TargetDetailPage() {
       const splitText = doc.splitTextToSize(aiSummary, 180);
       doc.text(splitText, 14, 95);
 
-      // Assets Table
+      // Target Info
       doc.addPage();
       doc.setFontSize(14);
-      doc.text("Discovered Assets", 14, 22);
+      doc.text("Target Information", 14, 22);
 
-      const assetData = targetAssets.map(a => [
-        a.subdomain || a.name || 'N/A',
-        a.ip || 'Pending...',
-        'Active'
-      ]);
+      const targetInfo = [
+        [target.ip, target.mac, target.device_type, target.alive ? 'Online' : 'Offline']
+      ];
 
       autoTable(doc, {
         startY: 28,
-        head: [['Subdomain / Host', 'IP Address', 'Status']],
-        body: assetData,
+        head: [['IP Address', 'MAC Address', 'Device Type', 'Status']],
+        body: targetInfo,
         theme: 'grid',
         headStyles: { fillColor: [63, 81, 181] }
       });
@@ -593,15 +619,15 @@ export default function TargetDetailPage() {
                       {targetPorts.map((port, i) => (
                         <tr key={i} className="hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3">
-                            <span className="font-bold text-base">{port.portNumber}</span>
+                            <span className="font-bold text-base">{port.port}</span>
                           </td>
-                          <td className="px-4 py-3 font-medium">{port.service || port.description || "Unidentified"}</td>
+                          <td className="px-4 py-3 font-medium">{port.service || "Unidentified"}</td>
                           <td className="px-4 py-3">
                             <Badge variant="outline" className="text-[10px] uppercase">{port.protocol}</Badge>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                              Open
+                              {port.state || "Open"}
                             </Badge>
                           </td>
                         </tr>

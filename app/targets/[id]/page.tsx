@@ -11,7 +11,10 @@ import {
   Trash2,
   FileText,
   Download,
-  Loader2
+  Loader2,
+  Wifi,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -84,6 +87,10 @@ export default function TargetDetailPage() {
   const [dbPorts, setDbPorts] = React.useState<any[]>([]);
   const [dbServices, setDbServices] = React.useState<any[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(true);
+
+  // Packet capture and visualization
+  const [packets, setPackets] = React.useState<any[]>([]);
+  const [isCapturing, setIsCapturing] = React.useState(false);
 
   const fetchTargetDetails = React.useCallback(async () => {
     try {
@@ -325,8 +332,6 @@ export default function TargetDetailPage() {
   const targetServices = dbServices;
 
   // Packet capture state (mocked for now)
-  const [packets, setPackets] = React.useState<string[]>([]);
-  const [isCapturing, setIsCapturing] = React.useState(false);
 
   const handleStartCapture = async () => {
     setIsCapturing(true);
@@ -598,6 +603,7 @@ export default function TargetDetailPage() {
               <TabsList className="bg-muted/50 border flex w-max h-auto">
                 <TabsTrigger value="ports" className="gap-2 shrink-0"><Network className="size-4" /> Open Ports</TabsTrigger>
                 <TabsTrigger value="services" className="gap-2 shrink-0"><Server className="size-4" /> Services</TabsTrigger>
+                <TabsTrigger value="packets" className="gap-2 shrink-0"><Wifi className="size-4" /> Packets</TabsTrigger>
                 <TabsTrigger value="history" className="gap-2 shrink-0"><Clock className="size-4" /> History</TabsTrigger>
               </TabsList>
             </div>
@@ -746,6 +752,115 @@ export default function TargetDetailPage() {
                       </div>
                     </CardContent>
                   </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="packets" className="m-0 h-full">
+                <div className="flex flex-col gap-4 h-full">
+                  {/* Packet Visualization */}
+                  <div className="flex-1 border rounded-lg bg-background overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
+                      <h3 className="font-semibold text-sm">Live Packet Transfer</h3>
+                      {isCapturing ? (
+                        <Badge className="bg-destructive text-destructive-foreground animate-pulse gap-1">
+                          <div className="size-2 rounded-full bg-white" /> Recording
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">Idle</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs">
+                      {packets.length > 0 ? (
+                        packets.map((pkt, i) => (
+                          <div key={i} className="flex items-center gap-2 p-2 bg-muted/50 rounded border border-muted/30 hover:bg-muted/70 transition-colors">
+                            <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded ${pkt.direction === 'in' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                              {pkt.direction === 'in' ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />}
+                              {pkt.direction === 'in' ? 'RX' : 'TX'}
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-muted-foreground">{pkt.time}</span>
+                              <span className="text-primary mx-2">•</span>
+                              <span className="text-foreground">{pkt.protocol}</span>
+                              <span className="text-muted-foreground ml-2">{pkt.source} → {pkt.destination}</span>
+                            </div>
+                            <div className="text-right">
+                              <Badge variant="outline" className="text-[10px]">{pkt.size}B</Badge>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                          <p>No packets captured. Start capture to see packet transfers.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Control Buttons */}
+                  <div className="flex gap-2">
+                    {!isCapturing ? (
+                      <Button 
+                        onClick={() => {
+                          setIsCapturing(true);
+                          setPackets([]);
+                          // Simulate packet capture
+                          const captureInterval = setInterval(() => {
+                            const protocols = ['TCP', 'UDP', 'ICMP', 'DNS', 'HTTP', 'HTTPS'];
+                            const directions = ['in', 'out'] as const;
+                            const newPacket = {
+                              time: new Date().toLocaleTimeString(),
+                              protocol: protocols[Math.floor(Math.random() * protocols.length)],
+                              direction: directions[Math.floor(Math.random() * directions.length)],
+                              source: `${target.ip}:${Math.floor(Math.random() * 60000) + 1024}`,
+                              destination: Math.random() > 0.5 ? '8.8.8.8:53' : '1.1.1.1:443',
+                              size: Math.floor(Math.random() * 1500) + 64
+                            };
+                            setPackets(prev => [newPacket, ...prev.slice(0, 99)]);
+                          }, 500);
+
+                          // Stop after 30 seconds
+                          setTimeout(() => {
+                            setIsCapturing(false);
+                            clearInterval(captureInterval);
+                          }, 30000);
+                        }}
+                        className="gap-2"
+                      >
+                        <PlayIcon className="size-4" />
+                        Start Capture
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => {
+                          setIsCapturing(false);
+                          setPackets([]);
+                        }}
+                        variant="destructive"
+                        className="gap-2"
+                      >
+                        <span className="size-2 rounded-full bg-white animate-pulse" />
+                        Stop Capture
+                      </Button>
+                    )}
+                    <Button 
+                      onClick={() => {
+                        const csvContent = packets.map(p => 
+                          `${p.time},${p.protocol},${p.direction},${p.source},${p.destination},${p.size}`
+                        ).join('\n');
+                        const link = document.createElement('a');
+                        link.href = `data:text/csv;charset=utf-8,Time,Protocol,Direction,Source,Destination,Size\n${csvContent}`;
+                        link.download = `packets_${target.ip}_${new Date().getTime()}.csv`;
+                        link.click();
+                      }}
+                      variant="outline"
+                      className="gap-2"
+                      disabled={packets.length === 0}
+                    >
+                      <Download className="size-4" />
+                      Export
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
 

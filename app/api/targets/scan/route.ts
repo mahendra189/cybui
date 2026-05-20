@@ -70,7 +70,7 @@ export async function POST() {
     await servicesCol.deleteMany({});
 
     // Insert new targets from scan with initial status
-    const targets = scanData.devices.map(device => ({
+    const targets = scanData.devices.map((device: any) => ({
       ip: device.ip,
       mac: device.mac,
       hostname: device.hostname,
@@ -137,28 +137,22 @@ export async function POST() {
 
             // Store ports in database
             if (openPorts.length > 0) {
-              const portDocs = openPorts.map((port: any) => {
-                const portStr = typeof port === 'string' ? port : (port.port || port.portNumber);
-                const parts = String(portStr).split('/');
-                const portNum = parts[0];
-                const protocol = parts[1] || 'tcp';
-
-                return {
-                  targetId: String(target._id),
-                  targetIP: target.ip,
-                  port: portNum,
-                  protocol: protocol,
-                  service: getServiceName(portNum),
-                  discoveredAt: new Date(),
-                  state: 'open'
-                };
-              });
+              const portDocs = openPorts.map((port: any) => ({
+                targetId: String(target._id),
+                targetIP: target.ip,
+                port: String(port.port),
+                protocol: port.protocol || 'tcp',
+                service: port.service || getServiceName(port.port),
+                discoveredAt: new Date(),
+                state: 'open'
+              }));
 
               await portsCol.insertMany(portDocs);
 
               // Create services from ports
               const serviceDocs = portDocs
-                .map(p => ({
+                .filter((p: any, idx: number, arr: any[]) => arr.findIndex((x: any) => x.port === p.port && x.service === p.service) === idx)
+                .map((p: any) => ({
                   targetId: String(target._id),
                   targetIP: target.ip,
                   name: p.service,
@@ -167,8 +161,7 @@ export async function POST() {
                   version: 'Detected',
                   riskScore: getRiskScore(p.service),
                   discoveredAt: new Date()
-                }))
-                .filter((s, idx, arr) => arr.findIndex(x => x.name === s.name && x.port === s.port) === idx);
+                }));
 
               if (serviceDocs.length > 0) {
                 await servicesCol.insertMany(serviceDocs);

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
-  Building2, Globe, Activity, Server, Target, CornerDownRight, Network,
+  Building2, Globe, Activity, Server, Target, Network,
   Terminal, Bot, Send, HardDrive, ListEnd, Clock,
   AlertTriangle,
   PlayIcon,
@@ -567,10 +567,9 @@ export default function TargetDetailPage() {
 
         {/* Left Column: Dynamic Sections */}
         <div className="lg:col-span-2 flex flex-col h-187.5 bg-card border rounded-lg shadow-sm overflow-hidden">
-          <Tabs defaultValue="subdomains" className="flex flex-col w-full h-full">
+          <Tabs defaultValue="ports" className="flex flex-col w-full h-full">
             <div className="border-b px-4 py-3 bg-muted/10 overflow-x-auto">
               <TabsList className="bg-muted/50 border flex w-max h-auto">
-                <TabsTrigger value="subdomains" className="gap-2 shrink-0"><Globe className="size-4" /> Found Subdomains</TabsTrigger>
                 <TabsTrigger value="ports" className="gap-2 shrink-0"><Network className="size-4" /> Open Ports</TabsTrigger>
                 <TabsTrigger value="services" className="gap-2 shrink-0"><Server className="size-4" /> Services</TabsTrigger>
                 <TabsTrigger value="history" className="gap-2 shrink-0"><Clock className="size-4" /> History</TabsTrigger>
@@ -579,42 +578,14 @@ export default function TargetDetailPage() {
 
             <div className="flex-1 overflow-y-auto p-4 bg-dot-black/[0.1] dark:bg-dot-white/[0.1]">
 
-              <TabsContent value="subdomains" className="m-0 h-full">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {targetAssets.map((asset, i) => (
-                    <Link
-                      key={i}
-                      href={`/assets/${asset._id || asset.id}`}
-                      className="flex flex-col p-4 bg-background border rounded-lg shadow-sm hover:border-primary/50 hover:shadow-md transition-all group"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm tracking-tight group-hover:text-primary transition-colors">
-                          {asset.subdomain || asset.deviceName || asset.name || `host-${i}.${target.primaryDomain}`}
-                        </span>
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px]">Alive</Badge>
-                      </div>
-                      <span className="font-mono text-xs text-muted-foreground mb-3">{asset.ip || "Pending..."}</span>
-                      <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground pt-3 border-t">
-                        <CornerDownRight className="size-3" /> Source: AI Agent Scan
-                      </div>
-                    </Link>
-                  ))}
-                  {targetAssets.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-background/50">
-                      Scanning in progress. Waiting for subdomains...
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-
               <TabsContent value="ports" className="m-0 h-full">
                 <div className="rounded-md border bg-background overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
                       <tr>
-                        <th className="px-4 py-3 font-medium">Node IP</th>
                         <th className="px-4 py-3 font-medium">Port</th>
                         <th className="px-4 py-3 font-medium">Service</th>
+                        <th className="px-4 py-3 font-medium">Protocol</th>
                         <th className="px-4 py-3 font-medium text-right">State</th>
                       </tr>
                     </thead>
@@ -622,22 +593,15 @@ export default function TargetDetailPage() {
                       {targetPorts.map((port, i) => (
                         <tr key={i} className="hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {port.assets?.slice(0, 2).map((a: any, idx: number) => (
-                                <Link key={idx} href={`/assets/${a.id || a._id}`}>
-                                  <Badge variant="secondary" className="text-[10px] py-0 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
-                                    {a.name}
-                                  </Badge>
-                                </Link>
-                              )) || "N/A"}
-                              {(port.assets?.length || 0) > 2 && <Badge variant="outline" className="text-[10px] py-0">+{port.assets.length - 2} more</Badge>}
-                            </div>
+                            <span className="font-bold text-base">{port.portNumber}</span>
                           </td>
-                          <td className="px-4 py-3 font-bold">{port.portNumber || port.port} <span className="text-xs font-normal text-muted-foreground uppercase ml-1">{port.protocol}</span></td>
                           <td className="px-4 py-3 font-medium">{port.service || port.description || "Unidentified"}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className="text-[10px] uppercase">{port.protocol}</Badge>
+                          </td>
                           <td className="px-4 py-3 text-right">
-                            <Badge variant="outline" className={port.state === 'open' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-destructive/10 text-destructive border-destructive/20'}>
-                              {port.state || "open"}
+                            <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                              Open
                             </Badge>
                           </td>
                         </tr>
@@ -657,37 +621,41 @@ export default function TargetDetailPage() {
                   <table className="w-full text-sm text-left">
                     <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
                       <tr>
-                        <th className="px-4 py-3 font-medium">Service Name</th>
-                        <th className="px-4 py-3 font-medium">Discovery</th>
+                        <th className="px-4 py-3 font-medium">Service</th>
+                        <th className="px-4 py-3 font-medium">Port</th>
+                        <th className="px-4 py-3 font-medium">Protocol</th>
                         <th className="px-4 py-3 font-medium">Version</th>
                         <th className="px-4 py-3 font-medium text-right">Risk</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {targetServices.map((service, i) => (
-                        <tr key={i} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3 font-bold">{service.name}</td>
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {service.port}/{service.protocol}
-                            <div className="flex gap-1 mt-1">
-                              {service.assets?.map((asset: any) => (
-                                <Link key={asset.id} href={`/assets/${asset.id}`}>
-                                  <Badge variant="outline" className="text-[9px] px-1 h-4 cursor-pointer hover:bg-muted transition-colors">
-                                    {asset.name}
-                                  </Badge>
-                                </Link>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">{service.version || "Detected"}</td>
-                          <td className="px-4 py-3 text-right">
-                            <Badge className="bg-primary/10 text-primary border-primary/20">{service.riskScore || "Low"}</Badge>
-                          </td>
-                        </tr>
-                      ))}
+                      {targetServices.map((service, i) => {
+                        const riskColor = 
+                          service.riskScore === 'High' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                          service.riskScore === 'Medium' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+                        
+                        return (
+                          <tr key={i} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-4 py-3 font-bold">{service.name}</td>
+                            <td className="px-4 py-3 font-mono">{service.port}</td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="text-[10px] uppercase">{service.protocol}</Badge>
+                            </td>
+                            <td className="px-4 py-3 text-xs">
+                              <span className="bg-muted/50 px-2 py-1 rounded font-mono">{service.version}</span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <Badge className={riskColor}>
+                                {service.riskScore}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {targetServices.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">No services identified yet.</td>
+                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground italic">No services identified yet.</td>
                         </tr>
                       )}
                     </tbody>
@@ -696,21 +664,60 @@ export default function TargetDetailPage() {
               </TabsContent>
 
               <TabsContent value="history" className="m-0 h-full">
-                <div className="space-y-3">
-                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-3 text-amber-500 items-start">
-                    <AlertTriangle className="size-5 shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-bold">Historical Data Gathering</p>
-                      <p className="opacity-90 mt-1">Wayback Machine and AlienVault queries have been queued. The agent is analyzing archived URL parameters.</p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                      <div className="text-xs text-muted-foreground font-semibold uppercase mb-1">First Seen</div>
+                      <div className="text-sm font-mono">{target.createdAt ? new Date(target.createdAt).toLocaleDateString() : 'N/A'}</div>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                      <div className="text-xs text-muted-foreground font-semibold uppercase mb-1">Last Scan</div>
+                      <div className="text-sm font-mono">{target.last_port_scan ? new Date(target.last_port_scan).toLocaleDateString() : 'Never'}</div>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                      <div className="text-xs text-muted-foreground font-semibold uppercase mb-1">Scan Count</div>
+                      <div className="text-sm font-mono">{target.port_scan_count || 0}</div>
                     </div>
                   </div>
                   <Card className="bg-background shadow-sm border-dashed">
-                    <CardContent className="py-8 flex flex-col items-center justify-center text-center">
-                      <ListEnd className="size-8 text-muted-foreground mb-3 opacity-50" />
-                      <p className="text-sm font-medium">Synchronizing with historical archives...</p>
-                      <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                        As the agent uncovers URLs like /api/v1/auth?token= from historical sources, they will populate here dynamically.
-                      </p>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Device Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground font-semibold">IP Address</span>
+                        <p className="font-mono text-xs mt-1">{target.ip}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold">MAC Address</span>
+                        <p className="font-mono text-xs mt-1">{target.mac}</p>
+                      </div>
+                      {target.hostname && (
+                        <div>
+                          <span className="text-muted-foreground font-semibold">Hostname</span>
+                          <p className="font-mono text-xs mt-1">{target.hostname}</p>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-muted-foreground font-semibold">Device Type</span>
+                        <p className="font-mono text-xs mt-1">{target.device_type || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold">OS Guess</span>
+                        <p className="font-mono text-xs mt-1">{target.os_guess || 'Unknown'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold">Network</span>
+                        <p className="font-mono text-xs mt-1">{target.network || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold">Interface</span>
+                        <p className="font-mono text-xs mt-1">{target.interface || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground font-semibold">Latency</span>
+                        <p className="font-mono text-xs mt-1">{target.latency_ms}ms</p>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>

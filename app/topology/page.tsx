@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect } from "react"
+import React from "react"
 import {
   ReactFlow,
   MiniMap,
@@ -17,9 +17,12 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/base.css"
 import Link from "next/link"
-import { Wifi, Globe, Activity, ScanLine, Lock, Zap } from "lucide-react"
+import { Wifi, Globe, Activity, ScanLine, ArrowUp, ArrowDown, ActivitySquare, Network } from "lucide-react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useGlobalData } from "@/app/context/GlobalDataContext"
 import { getRadialLayout, getHierarchicalLayout, getGridLayout } from "@/lib/topology-layouts"
 
@@ -28,11 +31,11 @@ import { getRadialLayout, getHierarchicalLayout, getGridLayout } from "@/lib/top
 // Router/Gateway Node - placed in center
 const RouterNode = ({ data }: { data: any }) => {
   return (
-    <div className="relative rounded-full border-4 border-amber-500/80 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 p-4 w-24 h-24 shadow-lg shadow-amber-500/30 flex items-center justify-center">
-      <Handle type="source" position={Position.Bottom} className="!bg-amber-500" />
-      <Handle type="source" position={Position.Top} className="!bg-amber-500" />
-      <Handle type="source" position={Position.Left} className="!bg-amber-500" />
-      <Handle type="source" position={Position.Right} className="!bg-amber-500" />
+    <div className="relative rounded-full border-4 border-amber-500/80 bg-linear-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900 p-4 w-24 h-24 shadow-lg shadow-amber-500/30 flex items-center justify-center">
+      <Handle type="source" position={Position.Bottom} className="bg-amber-500!" />
+      <Handle type="source" position={Position.Top} className="bg-amber-500!" />
+      <Handle type="source" position={Position.Left} className="bg-amber-500!" />
+      <Handle type="source" position={Position.Right} className="bg-amber-500!" />
       
       <div className="flex flex-col items-center gap-1">
         <Wifi className="size-6 text-amber-600" />
@@ -93,24 +96,26 @@ export default function TopologyPage() {
   const { data: dbData } = useGlobalData()
   const [selectedNetwork, setSelectedNetwork] = React.useState("all")
   const [layoutMode, setLayoutMode] = React.useState<"radial" | "hierarchical" | "grid">("radial")
+  const [packetFeed, setPacketFeed] = React.useState<any[]>([])
+  const hasSeededPacketsRef = React.useRef(false)
+
+  const networkDevices = React.useMemo(() => {
+    let devices = dbData.targets || []
+
+    if (selectedNetwork !== "all") {
+      devices = devices.filter(d => d.network === selectedNetwork || d.interface === selectedNetwork)
+    }
+
+    return devices
+  }, [dbData.targets, selectedNetwork])
 
   // Generate network topology from devices (targets)
-  const { globalNodes, globalEdges } = React.useMemo(() => {
-    // Filter devices by network/network interface
-    let devices = dbData.targets || [];
-    
-    console.log("[Topology] Total devices from targets:", devices.length);
-    if (devices.length > 0) console.log("[Topology] Sample device:", devices[0]);
-    
-    if (selectedNetwork !== "all") {
-      const beforeFilter = devices.length;
-      devices = devices.filter(d => d.network === selectedNetwork || d.interface === selectedNetwork);
-      console.log(`[Topology] Filtered from ${beforeFilter} to ${devices.length} for network: ${selectedNetwork}`);
-    }
+  const { globalNodes, globalEdges, routerDevice } = React.useMemo(() => {
+    const devices = networkDevices
 
     if (devices.length === 0) {
       console.warn("[Topology] No devices found!");
-      return { globalNodes: [], globalEdges: [] };
+      return { globalNodes: [], globalEdges: [], routerDevice: null };
     }
 
     // Find router - heuristic: device with .1 IP or highest probability router
@@ -146,13 +151,6 @@ export default function TopologyPage() {
 
     // Get other devices to arrange around router
     const otherDevices = devices.filter(d => d.ip !== routerDevice.ip);
-    
-    console.log("[Topology] Router device:", routerDevice.ip, routerDevice.hostname);
-    console.log("[Topology] Other devices to display:", otherDevices.length);
-    if (otherDevices.length > 0) {
-      console.log("[Topology] Sample device to display:", otherDevices[0]);
-    }
-    console.log("[Topology] Layout mode:", layoutMode);
 
     // Apply selected layout algorithm
     let layoutResult;
@@ -173,8 +171,10 @@ export default function TopologyPage() {
     if (layoutResult.nodes.length > 0) {
       console.log("[Topology] All node IDs:", layoutResult.nodes.map(n => ({ id: n.id, type: n.type })));
     }
-    return { globalNodes: layoutResult.nodes, globalEdges: layoutResult.edges };
-  }, [dbData.targets, selectedNetwork, layoutMode]);
+    return { globalNodes: layoutResult.nodes, globalEdges: layoutResult.edges, routerDevice };
+  }, [networkDevices, layoutMode]);
+
+  const mainPacketDevice = React.useMemo(() => routerDevice || networkDevices[0] || null, [routerDevice, networkDevices])
 
   // Get unique networks for filtering
   const uniqueNetworks = React.useMemo(() => {
@@ -208,6 +208,115 @@ export default function TopologyPage() {
     setEdges(targetEdges)
   }, [targetNodes, targetEdges, setNodes, setEdges])
 
+  const createPacket = React.useCallback(() => {
+    if (!mainPacketDevice || networkDevices.length === 0) return null
+
+    const protocols = ["TCP", "UDP", "ICMP", "DNS", "HTTP", "HTTPS"]
+    const direction = Math.random() > 0.5 ? "in" : "out"
+    const hubLabel = mainPacketDevice.hostname || mainPacketDevice.ip
+    const hubAddress = mainPacketDevice.ip
+    const internalPeers = networkDevices.filter(device => device.ip !== mainPacketDevice.ip)
+    const useExternalPeer = Math.random() > 0.55 || internalPeers.length === 0
+    const peerDevice = useExternalPeer ? null : internalPeers[Math.floor(Math.random() * internalPeers.length)]
+    const peerIp = peerDevice?.ip || `${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}`
+    const peerLabel = peerDevice?.hostname || peerDevice?.ip || `New Device ${peerIp}`
+
+    return {
+      id: `${Date.now()}-${Math.random()}`,
+      time: new Date().toLocaleTimeString(),
+      protocol: protocols[Math.floor(Math.random() * protocols.length)],
+      direction,
+      hubLabel,
+      hubAddress,
+      peerKey: peerIp,
+      peerLabel,
+      peerAddress: peerIp,
+      source: direction === "out" ? `${hubLabel} (${hubAddress})` : `${peerLabel} (${peerIp})`,
+      destination: direction === "out" ? `${peerLabel} (${peerIp})` : `${hubLabel} (${hubAddress})`,
+      size: Math.floor(Math.random() * 1400) + 64,
+      state: Math.random() > 0.7 ? "retransmit" : "flowing",
+    }
+  }, [mainPacketDevice, networkDevices])
+
+  React.useEffect(() => {
+    if (networkDevices.length === 0) {
+      setPacketFeed([])
+      hasSeededPacketsRef.current = false
+      return
+    }
+
+    if (!hasSeededPacketsRef.current && packetFeed.length === 0) {
+      const seedPackets = Array.from({ length: 6 }, () => createPacket()).filter(Boolean)
+      setPacketFeed(seedPackets as any[])
+      hasSeededPacketsRef.current = true
+    }
+
+    const interval = setInterval(() => {
+      const packet = createPacket()
+      if (!packet) return
+
+      setPacketFeed(prev => [packet, ...prev].slice(0, 48))
+    }, 850)
+
+    return () => clearInterval(interval)
+  }, [createPacket, networkDevices.length, packetFeed.length])
+
+  React.useEffect(() => {
+    setPacketFeed([])
+    hasSeededPacketsRef.current = false
+  }, [selectedNetwork])
+
+  const packetMapPeers = React.useMemo(() => {
+    const peerMap = new Map<string, any>()
+
+    packetFeed.forEach((pkt) => {
+      if (!pkt.peerKey) return
+
+      const existing = peerMap.get(pkt.peerKey) || {
+        key: pkt.peerKey,
+        label: pkt.peerLabel,
+        address: pkt.peerAddress,
+        count: 0,
+        firstSeen: pkt.time,
+        lastSeen: pkt.time,
+        latestPacketId: pkt.id,
+        latestDirection: pkt.direction,
+        protocols: new Set<string>(),
+      }
+
+      existing.count += 1
+      existing.lastSeen = pkt.time
+      existing.latestPacketId = pkt.id
+      existing.latestDirection = pkt.direction
+      existing.protocols.add(pkt.protocol)
+      peerMap.set(pkt.peerKey, existing)
+    })
+
+    const peers = Array.from(peerMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+
+    return peers.map((peer, index) => {
+      const radius = peers.length === 1 ? 0 : 34
+      const angle = peers.length === 1 ? -Math.PI / 2 : (Math.PI * 2 * index) / peers.length - Math.PI / 2
+      return {
+        ...peer,
+        x: 50 + Math.cos(angle) * radius,
+        y: 50 + Math.sin(angle) * radius,
+      }
+    })
+  }, [packetFeed])
+
+  const packetStats = React.useMemo(() => {
+    const incoming = packetFeed.filter(pkt => pkt.direction === "in").length
+    const outgoing = packetFeed.filter(pkt => pkt.direction === "out").length
+    const avgSize = packetFeed.length > 0
+      ? Math.round(packetFeed.reduce((sum, pkt) => sum + pkt.size, 0) / packetFeed.length)
+      : 0
+
+    return { incoming, outgoing, avgSize }
+  }, [packetFeed])
+
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6 shrink-0 z-10 relative px-4 md:px-8 top-4 md:top-8 pointer-events-none">
@@ -219,7 +328,7 @@ export default function TopologyPage() {
         </div>
         <div className="flex items-center gap-3 pointer-events-auto">
           <select 
-            className="flex h-9 w-[200px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"
+            className="flex h-9 w-50 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none"
             value={selectedNetwork}
             onChange={(e) => setSelectedNetwork(e.target.value)}
           >
@@ -265,62 +374,294 @@ export default function TopologyPage() {
         </div>
       </div>
 
-      <div className="flex-1 w-full border rounded-xl overflow-hidden relative">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.5}
-          maxZoom={2}
-          className="bg-muted/5"
-        >
-          <Controls position="bottom-left" />
-          <MiniMap 
-            zoomable 
-            pannable 
-            nodeColor={(node) => {
-              if (node.type === 'router') return '#b45309'
-              if (node.type === 'device') {
-                if (node.data.alive) return '#059669'
-                return '#6b7280'
-              }
-              return '#94a3b8'
-            }} 
-            className="rounded-lg shadow-sm border bg-background"
-          />
-          <Background gap={24} size={2} color="#888" className="opacity-20" />
-        </ReactFlow>
+      <Tabs defaultValue="topology" className="flex flex-1 min-h-0 flex-col">
+        <div className="mb-4 shrink-0">
+          <TabsList className="bg-muted/60 border">
+            <TabsTrigger value="topology" className="gap-2">
+              <Network className="size-4" /> Topology
+            </TabsTrigger>
+            <TabsTrigger value="packets" className="gap-2">
+              <Wifi className="size-4" /> Packets
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        {/* Info Panel */}
-        <div className="absolute top-4 left-4 z-10 bg-background/90 backdrop-blur border rounded-lg p-4 shadow-lg max-w-xs">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Network Status</div>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="size-2.5 rounded-full bg-amber-500" />
-              <span>Router/Gateway</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="size-2.5 rounded-full bg-emerald-500" />
-              <span>Connected Device (Active)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="size-2.5 rounded-full bg-gray-500" />
-              <span>Device (Offline)</span>
-            </div>
-            <div className="border-t border-muted pt-2 mt-2">
-              <div className="text-xs text-muted-foreground">
-                <div>Total Devices: <span className="font-mono font-semibold text-foreground">{globalNodes.length}</span></div>
-                <div>From Targets: <span className="font-mono font-semibold text-foreground">{dbData.targets?.length || 0}</span></div>
+        <TabsContent value="topology" className="m-0 flex-1 min-h-0">
+          <div className="flex-1 w-full border rounded-xl overflow-hidden relative h-full">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.2 }}
+              minZoom={0.5}
+              maxZoom={2}
+              className="bg-muted/5"
+            >
+              <Controls position="bottom-left" />
+              <MiniMap 
+                zoomable 
+                pannable 
+                nodeColor={(node) => {
+                  if (node.type === 'router') return '#b45309'
+                  if (node.type === 'device') {
+                    if (node.data.alive) return '#059669'
+                    return '#6b7280'
+                  }
+                  return '#94a3b8'
+                }} 
+                className="rounded-lg shadow-sm border bg-background"
+              />
+              <Background gap={24} size={2} color="#888" className="opacity-20" />
+            </ReactFlow>
+
+            {/* Info Panel */}
+            <div className="absolute top-4 left-4 z-10 bg-background/90 backdrop-blur border rounded-lg p-4 shadow-lg max-w-xs">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Network Status</div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="size-2.5 rounded-full bg-amber-500" />
+                  <span>Router/Gateway</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-2.5 rounded-full bg-emerald-500" />
+                  <span>Connected Device (Active)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-2.5 rounded-full bg-gray-500" />
+                  <span>Device (Offline)</span>
+                </div>
+                <div className="border-t border-muted pt-2 mt-2">
+                  <div className="text-xs text-muted-foreground">
+                    <div>Total Devices: <span className="font-mono font-semibold text-foreground">{globalNodes.length}</span></div>
+                    <div>From Targets: <span className="font-mono font-semibold text-foreground">{dbData.targets?.length || 0}</span></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="packets" className="m-0 flex-1 min-h-0">
+          <div className="grid h-full grid-cols-1 gap-4 xl:grid-cols-[1.4fr_0.9fr]">
+            <Card className="border shadow-sm bg-background/90 overflow-hidden flex flex-col min-h-0">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <ActivitySquare className="size-5 text-primary" /> Realtime Packet Flow
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">Live network traffic sampled from the active topology view.</p>
+                  </div>
+                  <Badge variant="secondary" className="gap-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                    <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> Live
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 min-h-0 p-4">
+                <div className="mb-4 rounded-2xl border bg-background/95 p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold tracking-tight">Packet Discovery Map</div>
+                      <p className="text-xs text-muted-foreground">Center node stays fixed while each new destination bubble persists on the map.</p>
+                    </div>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                      {packetMapPeers.length} discovered
+                    </Badge>
+                  </div>
+
+                  <div className="relative h-96 overflow-hidden rounded-xl border bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]">
+                    <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <defs>
+                        <marker id="packet-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                          <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" />
+                        </marker>
+                      </defs>
+
+                      {packetMapPeers.map((peer) => {
+                        const isLatest = packetFeed[0]?.peerKey === peer.key
+                        const lineColor = isLatest ? "rgba(59,130,246,0.9)" : "rgba(148,163,184,0.35)"
+                        const lineWidth = isLatest ? 0.7 : 0.45
+                        const travelX = 50 + (peer.x - 50) * 0.72
+                        const travelY = 50 + (peer.y - 50) * 0.72
+
+                        return (
+                          <g key={peer.key}>
+                            <line
+                              x1="50"
+                              y1="50"
+                              x2={peer.x}
+                              y2={peer.y}
+                              stroke={lineColor}
+                              strokeWidth={lineWidth}
+                              strokeDasharray={isLatest ? "2 1.5" : "1 1.5"}
+                              markerEnd="url(#packet-arrow)"
+                              style={{ transition: "all 250ms ease" }}
+                            />
+                            <circle
+                              cx={travelX}
+                              cy={travelY}
+                              r={isLatest ? 1.8 : 1.1}
+                              fill={isLatest ? "rgb(59,130,246)" : "rgb(148,163,184)"}
+                              opacity={isLatest ? 0.85 : 0.6}
+                              className={isLatest ? "animate-pulse" : ""}
+                            />
+                          </g>
+                        )
+                      })}
+                    </svg>
+
+                    <div className="absolute inset-0">
+                      <div className="absolute left-1/2 top-1/2 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-primary/30 bg-primary/10 shadow-lg shadow-primary/20">
+                        <div className="flex flex-col items-center text-center">
+                          <Wifi className="size-6 text-primary" />
+                          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Main</div>
+                          <div className="max-w-20 truncate text-[10px] font-mono text-foreground/90">
+                            {mainPacketDevice ? (mainPacketDevice.hostname || mainPacketDevice.ip) : "Hub"}
+                          </div>
+                        </div>
+                        <div className="absolute -inset-2 rounded-full border border-primary/20 animate-pulse" />
+                      </div>
+
+                      {packetMapPeers.map((peer) => {
+                        const isLatest = packetFeed[0]?.peerKey === peer.key
+                        return (
+                          <div
+                            key={peer.key}
+                            className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center transition-all duration-500 ${isLatest ? "scale-105" : "scale-100"}`}
+                            style={{ left: `${peer.x}%`, top: `${peer.y}%` }}
+                          >
+                            <div className={`relative flex h-20 w-20 items-center justify-center rounded-full border bg-background/95 shadow-md ${isLatest ? "border-primary/50 ring-4 ring-primary/15" : "border-border/70"}`}>
+                              <div className={`absolute -inset-2 rounded-full border ${isLatest ? "border-primary/30 animate-ping" : "border-border/20"}`} />
+                              <div className="flex flex-col items-center gap-0.5 px-2">
+                                <div className="max-w-16 truncate text-[10px] font-semibold">{peer.label}</div>
+                                <div className="max-w-16 truncate text-[9px] font-mono text-muted-foreground">{peer.address}</div>
+                                <Badge variant="secondary" className="mt-1 h-4 rounded-full px-1.5 text-[9px] leading-none">
+                                  {peer.count}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="mt-2 max-w-24 text-[9px] uppercase tracking-wide text-muted-foreground">
+                              {peer.count === 1 ? "New bubble" : `${peer.count} packets`}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3 mb-4">
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Packets Seen</div>
+                    <div className="mt-1 text-2xl font-bold">{packetFeed.length}</div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Inbound / Outbound</div>
+                    <div className="mt-1 text-2xl font-bold">{packetStats.incoming} / {packetStats.outgoing}</div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Avg Size</div>
+                    <div className="mt-1 text-2xl font-bold">{packetStats.avgSize}B</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border bg-background shadow-sm overflow-hidden flex flex-col min-h-96 h-full">
+                  <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                      <Activity className="size-4 text-primary animate-pulse" />
+                      Packet Stream
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPacketFeed([])}
+                      className="h-8"
+                    >
+                      Clear Stream
+                    </Button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.08),transparent_40%)]">
+                    {packetFeed.length > 0 ? packetFeed.map((pkt) => (
+                      <div key={pkt.id} className="grid gap-2 rounded-lg border bg-muted/20 px-3 py-3 md:grid-cols-[auto,1fr,auto] md:items-center">
+                        <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${pkt.direction === 'in' ? 'bg-blue-500/15 text-blue-500' : 'bg-amber-500/15 text-amber-500'}`}>
+                          {pkt.direction === 'in' ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />}
+                          {pkt.direction}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                            <span className="font-mono text-muted-foreground text-xs">{pkt.time}</span>
+                            <Badge variant="outline" className="text-[10px] uppercase">{pkt.protocol}</Badge>
+                            <span className="text-xs text-muted-foreground">{pkt.state}</span>
+                          </div>
+                          <div className="mt-1 font-mono text-xs leading-5 text-foreground wrap-break-word">
+                            <span className="text-primary">{pkt.source}</span>
+                            <span className="mx-2 text-muted-foreground">→</span>
+                            <span>{pkt.destination}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 md:flex-col md:items-end">
+                          <Badge variant="secondary" className="font-mono text-[10px]">{pkt.size}B</Badge>
+                          <div className="hidden md:flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wide">
+                            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                            flowing
+                          </div>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="flex h-full min-h-64 items-center justify-center text-center text-muted-foreground">
+                        <div>
+                          <div className="mx-auto mb-3 size-12 rounded-full bg-muted flex items-center justify-center">
+                            <Wifi className="size-5" />
+                          </div>
+                          <p className="font-medium">No packets captured yet.</p>
+                          <p className="text-sm">The stream will populate as soon as network activity is sampled.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-4 content-start">
+              <Card className="border shadow-sm bg-background/90">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Flow Snapshot</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Scope</div>
+                    <div className="mt-1 font-medium">{selectedNetwork === 'all' ? 'All active networks' : selectedNetwork}</div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Tracked Devices</div>
+                    <div className="mt-1 font-medium">{networkDevices.length}</div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Gateway</div>
+                    <div className="mt-1 font-mono text-xs wrap-break-word">{routerDevice?.hostname || routerDevice?.ip || 'Unavailable'}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border shadow-sm bg-background/90">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Packet Notes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <p>Traffic is simulated from the live topology data so the feed updates in real time without a backend capture service.</p>
+                  <p>Hook this tab to a packet source later if you want the rows to reflect a real stream instead of sampled flow.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

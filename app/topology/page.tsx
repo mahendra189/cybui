@@ -97,7 +97,13 @@ export default function TopologyPage() {
   const [selectedNetwork, setSelectedNetwork] = React.useState("all")
   const [layoutMode, setLayoutMode] = React.useState<"radial" | "hierarchical" | "grid">("radial")
   const [packetFeed, setPacketFeed] = React.useState<any[]>([])
+  const [movingPacket, setMovingPacket] = React.useState<any | null>(null)
+  const [motionProgress, setMotionProgress] = React.useState(0)
   const hasSeededPacketsRef = React.useRef(false)
+  const bubblePositionsRef = React.useRef(new Map<string, { x: number; y: number }>());
+  const discoveryPoolRef = React.useRef<string[]>([])
+  const motionFrameRef = React.useRef<number | null>(null)
+  const motionTimeoutRef = React.useRef<number | null>(null)
 
   const networkDevices = React.useMemo(() => {
     let devices = dbData.targets || []
@@ -176,6 +182,23 @@ export default function TopologyPage() {
 
   const mainPacketDevice = React.useMemo(() => routerDevice || networkDevices[0] || null, [routerDevice, networkDevices])
 
+  const createBubblePosition = React.useCallback(() => {
+    const angle = Math.random() * Math.PI * 2
+    const radius = 18 + Math.random() * 28
+    const x = Math.min(88, Math.max(12, 50 + Math.cos(angle) * radius))
+    const y = Math.min(88, Math.max(12, 50 + Math.sin(angle) * radius))
+    return { x, y }
+  }, [])
+
+  const getBubblePosition = React.useCallback((peerKey: string) => {
+    const existing = bubblePositionsRef.current.get(peerKey)
+    if (existing) return existing
+
+    const position = createBubblePosition()
+    bubblePositionsRef.current.set(peerKey, position)
+    return position
+  }, [createBubblePosition])
+
   // Get unique networks for filtering
   const uniqueNetworks = React.useMemo(() => {
     const networks = new Set<string>();
@@ -218,7 +241,8 @@ export default function TopologyPage() {
     const internalPeers = networkDevices.filter(device => device.ip !== mainPacketDevice.ip)
     const useExternalPeer = Math.random() > 0.55 || internalPeers.length === 0
     const peerDevice = useExternalPeer ? null : internalPeers[Math.floor(Math.random() * internalPeers.length)]
-    const peerIp = peerDevice?.ip || `${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}`
+    const discoveryPool = discoveryPoolRef.current
+    const peerIp = peerDevice?.ip || discoveryPool[Math.floor(Math.random() * discoveryPool.length)] || `${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}.${Math.floor(Math.random() * 200) + 20}`
     const peerLabel = peerDevice?.hostname || peerDevice?.ip || `New Device ${peerIp}`
 
     return {
@@ -242,6 +266,10 @@ export default function TopologyPage() {
     if (networkDevices.length === 0) {
       setPacketFeed([])
       hasSeededPacketsRef.current = false
+      discoveryPoolRef.current = []
+      bubblePositionsRef.current.clear()
+      setMovingPacket(null)
+      setMotionProgress(0)
       return
     }
 
@@ -256,6 +284,7 @@ export default function TopologyPage() {
       if (!packet) return
 
       setPacketFeed(prev => [packet, ...prev].slice(0, 48))
+      setMovingPacket(packet)
     }, 850)
 
     return () => clearInterval(interval)
@@ -264,7 +293,53 @@ export default function TopologyPage() {
   React.useEffect(() => {
     setPacketFeed([])
     hasSeededPacketsRef.current = false
+    bubblePositionsRef.current.clear()
+    discoveryPoolRef.current = Array.from({ length: 12 }, () => {
+      const second = Math.floor(Math.random() * 220) + 10
+      return `10.${Math.floor(Math.random() * 240) + 10}.${Math.floor(Math.random() * 240) + 10}.${second}`
+    })
+    setMovingPacket(null)
+    setMotionProgress(0)
   }, [selectedNetwork])
+
+  React.useEffect(() => {
+    if (!movingPacket) return
+
+    if (motionFrameRef.current !== null) {
+      cancelAnimationFrame(motionFrameRef.current)
+    }
+    if (motionTimeoutRef.current !== null) {
+      window.clearTimeout(motionTimeoutRef.current)
+    }
+
+    const duration = 520
+    const start = performance.now()
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1)
+      setMotionProgress(progress)
+
+      if (progress < 1) {
+        motionFrameRef.current = requestAnimationFrame(animate)
+      } else {
+        motionTimeoutRef.current = window.setTimeout(() => {
+          setMovingPacket(null)
+          setMotionProgress(0)
+        }, 140)
+      }
+    }
+
+    motionFrameRef.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (motionFrameRef.current !== null) {
+        cancelAnimationFrame(motionFrameRef.current)
+      }
+      if (motionTimeoutRef.current !== null) {
+        window.clearTimeout(motionTimeoutRef.current)
+      }
+    }
+  }, [movingPacket])
 
   const packetMapPeers = React.useMemo(() => {
     const peerMap = new Map<string, any>()
@@ -297,15 +372,20 @@ export default function TopologyPage() {
       .slice(0, 10)
 
     return peers.map((peer, index) => {
-      const radius = peers.length === 1 ? 0 : 34
-      const angle = peers.length === 1 ? -Math.PI / 2 : (Math.PI * 2 * index) / peers.length - Math.PI / 2
+      const position = getBubblePosition(peer.key)
       return {
         ...peer,
-        x: 50 + Math.cos(angle) * radius,
-        y: 50 + Math.sin(angle) * radius,
+        x: position.x,
+        y: position.y,
+        bubbleSize: Math.min(58 + peer.count * 8, 126),
       }
     })
-  }, [packetFeed])
+  }, [getBubblePosition, packetFeed])
+
+  const activePacketPeer = React.useMemo(() => {
+    if (!movingPacket) return null
+    return packetMapPeers.find(peer => peer.key === movingPacket.peerKey) || null
+  }, [movingPacket, packetMapPeers])
 
   const packetStats = React.useMemo(() => {
     const incoming = packetFeed.filter(pkt => pkt.direction === "in").length
@@ -466,7 +546,7 @@ export default function TopologyPage() {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm font-semibold tracking-tight">Packet Discovery Map</div>
-                      <p className="text-xs text-muted-foreground">Center node stays fixed while each new destination bubble persists on the map.</p>
+                      <p className="text-xs text-muted-foreground">Bubbles appear at random positions, grow with packet count, and only draw a path while a packet is moving.</p>
                     </div>
                     <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                       {packetMapPeers.length} discovered
@@ -475,43 +555,28 @@ export default function TopologyPage() {
 
                   <div className="relative h-96 overflow-hidden rounded-xl border bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.16),transparent_55%),linear-gradient(180deg,rgba(15,23,42,0.02),transparent)]">
                     <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <defs>
-                        <marker id="packet-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                          <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" />
-                        </marker>
-                      </defs>
-
-                      {packetMapPeers.map((peer) => {
-                        const isLatest = packetFeed[0]?.peerKey === peer.key
-                        const lineColor = isLatest ? "rgba(59,130,246,0.9)" : "rgba(148,163,184,0.35)"
-                        const lineWidth = isLatest ? 0.7 : 0.45
-                        const travelX = 50 + (peer.x - 50) * 0.72
-                        const travelY = 50 + (peer.y - 50) * 0.72
-
-                        return (
-                          <g key={peer.key}>
-                            <line
-                              x1="50"
-                              y1="50"
-                              x2={peer.x}
-                              y2={peer.y}
-                              stroke={lineColor}
-                              strokeWidth={lineWidth}
-                              strokeDasharray={isLatest ? "2 1.5" : "1 1.5"}
-                              markerEnd="url(#packet-arrow)"
-                              style={{ transition: "all 250ms ease" }}
-                            />
-                            <circle
-                              cx={travelX}
-                              cy={travelY}
-                              r={isLatest ? 1.8 : 1.1}
-                              fill={isLatest ? "rgb(59,130,246)" : "rgb(148,163,184)"}
-                              opacity={isLatest ? 0.85 : 0.6}
-                              className={isLatest ? "animate-pulse" : ""}
-                            />
-                          </g>
-                        )
-                      })}
+                      {activePacketPeer && movingPacket && (
+                        <g>
+                          <line
+                            x1="50"
+                            y1="50"
+                            x2={50 + (activePacketPeer.x - 50) * motionProgress}
+                            y2={50 + (activePacketPeer.y - 50) * motionProgress}
+                            stroke={movingPacket.direction === "in" ? "rgba(59,130,246,0.95)" : "rgba(245,158,11,0.95)"}
+                            strokeWidth="0.7"
+                            strokeLinecap="round"
+                            strokeDasharray="0.9 0.7"
+                            style={{ opacity: 0.95 }}
+                          />
+                          <circle
+                            cx={50 + (activePacketPeer.x - 50) * motionProgress}
+                            cy={50 + (activePacketPeer.y - 50) * motionProgress}
+                            r={1.25}
+                            fill={movingPacket.direction === "in" ? "rgb(59,130,246)" : "rgb(245,158,11)"}
+                            className="animate-pulse"
+                          />
+                        </g>
+                      )}
                     </svg>
 
                     <div className="absolute inset-0">
@@ -527,14 +592,14 @@ export default function TopologyPage() {
                       </div>
 
                       {packetMapPeers.map((peer) => {
-                        const isLatest = packetFeed[0]?.peerKey === peer.key
+                        const isLatest = movingPacket?.peerKey === peer.key
                         return (
                           <div
                             key={peer.key}
                             className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center transition-all duration-500 ${isLatest ? "scale-105" : "scale-100"}`}
-                            style={{ left: `${peer.x}%`, top: `${peer.y}%` }}
+                            style={{ left: `${peer.x}%`, top: `${peer.y}%`, width: `${peer.bubbleSize}px`, height: `${peer.bubbleSize}px` }}
                           >
-                            <div className={`relative flex h-20 w-20 items-center justify-center rounded-full border bg-background/95 shadow-md ${isLatest ? "border-primary/50 ring-4 ring-primary/15" : "border-border/70"}`}>
+                            <div className={`relative flex h-full w-full items-center justify-center rounded-full border bg-background/95 shadow-md ${isLatest ? "border-primary/50 ring-4 ring-primary/15" : "border-border/70"}`}>
                               <div className={`absolute -inset-2 rounded-full border ${isLatest ? "border-primary/30 animate-ping" : "border-border/20"}`} />
                               <div className="flex flex-col items-center gap-0.5 px-2">
                                 <div className="max-w-16 truncate text-[10px] font-semibold">{peer.label}</div>

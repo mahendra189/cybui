@@ -71,7 +71,7 @@ export default function AgentPage() {
       }
     }
     // Set tab title
-    document.title = "SecOps AI Agent | INIDS Dashboard";
+    document.title = "AI Agent | INIDS Dashboard";
   }, []);
 
   // Sync messages to sessionStorage
@@ -212,15 +212,15 @@ export default function AgentPage() {
     {
       title: "Ask General Cyber Threats",
       prompt: "What are the top 5 cybersecurity threats currently?",
-      description: "Ask general SecOps or architectural cyber questions.",
+      description: "Ask general Agent or architectural cyber questions.",
       icon: Sparkles,
       color: "text-purple-500 bg-purple-500/10",
     },
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] max-w-5xl mx-auto w-full border rounded-xl overflow-hidden bg-card shadow-lg flex-1">
-      {/* Top Header & DB Context Banner */}
+    <div className="flex flex-col mx-auto rounded-xl overflow-hidden shadow-lg flex-1 w-full h-full">
+      {/* Top Header & DB Context Banner */} 
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b p-4 bg-muted/20 gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-primary/10 rounded-xl border border-primary/20 text-primary">
@@ -228,13 +228,12 @@ export default function AgentPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-              SecOps Intelligence Agent
+              Agent
               <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-500 border-emerald-500/30 bg-emerald-500/5 animate-pulse flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
                 ACTIVE
               </Badge>
             </h1>
-            <p className="text-xs text-muted-foreground">LangGraph autonomous security analyst with local DB integration</p>
           </div>
         </div>
 
@@ -277,7 +276,7 @@ export default function AgentPage() {
       </div>
 
       {/* Main Messages Panel */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent" ref={scrollRef}>
         {messages.length === 0 ? (
           /* Welcome Starter View (ChatGPT style) */
           <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto text-center space-y-8 py-10">
@@ -289,7 +288,7 @@ export default function AgentPage() {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-bold tracking-tight">How can I assist your SecOps reconnaissance?</h2>
+              <h2 className="text-2xl font-bold tracking-tight">How can I assist your agent reconnaissance?</h2>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 I can audit open ports, map discovered assets, examine running services, or address general security issues. I have real-time access to the local database telemetry.
               </p>
@@ -418,7 +417,7 @@ export default function AgentPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask SecOps Agent about database hosts, open ports, or cyber threats..."
+            placeholder="Ask Agent about database hosts, open ports, or cyber threats..."
             className="w-full resize-none bg-transparent pr-12 pl-4 py-3.5 text-sm focus:outline-none placeholder:text-muted-foreground/60 min-h-[48px] max-h-[200px]"
             disabled={isLoading}
           />
@@ -445,7 +444,7 @@ export default function AgentPage() {
 
         <p className="text-[10px] text-muted-foreground/75 text-center mt-1 flex items-center justify-center gap-1">
           <Info className="size-3" />
-          Autonomous SecOps Agent matches network ports against live asset catalogs to evaluate risks.
+          Autonomous Agent matches network ports against live asset catalogs to evaluate risks.
         </p>
       </div>
     </div>

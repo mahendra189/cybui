@@ -11,7 +11,8 @@ import {
   Network,
   Target,
   Shield,
-  User
+  User,
+  MessageSquare
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -41,6 +42,11 @@ const navData = {
       url: "/targets",
       icon: Target,
       isActive: true,
+    },
+    {
+      title: "SecOps Agent",
+      url: "/agent",
+      icon: MessageSquare,
     },
     {
       title: "Topology",

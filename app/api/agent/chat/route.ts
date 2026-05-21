@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@/lib/auth";
+import clientPromise from "@/lib/mongodb";
 
 export async function POST(request: Request) {
   try {
@@ -9,59 +10,108 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { prompt, targetId, context } = await request.json();
+    const { prompt, threadId } = await request.json();
 
-    const SYSTEM_PROMPT = `You are a Senior Security Analyst and Reconnaissance Specialist for the INIDS Dashboard.
-Your goal is to analyze the attack surface of the target organization based on live discovery data.
+    // 1. Fetch live database context from MongoDB
+    let dbContextText = "";
+    try {
+      const client = await clientPromise;
+      const db = client.db("inids_dashboard");
 
-CURRENT TARGET: ${context?.target?.name} (${context?.target?.domain})
+      const [targets, assets, ports, services] = await Promise.all([
+        db.collection("targets").find({}).toArray(),
+        db.collection("assets").find({}).toArray(),
+        db.collection("ports").find({}).toArray(),
+        db.collection("services").find({}).toArray(),
+      ]);
 
-INVENTORY SUMMARY:
-- Assets: ${context?.assets?.length || 0} discovered subdomains/hosts.
-- Ports: ${context?.ports?.length || 0} open ports detected.
-- Services: ${context?.services?.length || 0} unique services identified.
+      dbContextText += "### SYSTEM DATABASE CONTEXT (LIVE TELEMETRY)\n";
+      dbContextText += `Total Targets: ${targets.length}\n`;
+      dbContextText += `Total Discovered Assets: ${assets.length}\n`;
+      dbContextText += `Total Open Ports: ${ports.length}\n`;
+      dbContextText += `Total Running Services: ${services.length}\n\n`;
 
-DATA CONTEXT:
-${JSON.stringify(context, null, 2)}
+      if (targets.length > 0) {
+        dbContextText += "#### Devices & Targets:\n";
+        targets.forEach((t: any) => {
+          dbContextText += `- IP: ${t.ip || 'N/A'}, Hostname: ${t.hostname || 'N/A'}, MAC: ${t.mac || 'N/A'}, Status: ${t.alive ? 'Online' : 'Offline'}, Latency: ${t.latency_ms || 0}ms\n`;
+        });
+        dbContextText += "\n";
+      }
 
-INSTRUCTIONS:
-1. Provide concise, technical, and actionable intelligence.
-2. If the user asks about vulnerabilities, cross-reference the open ports and service versions.
-3. Highlight high-risk exposures (e.g., exposed databases, RDP on port 3389, outdated SSH/Web servers).
-4. If no data is available for a query, suggest the user "Launch Recon" to gather live telemetry.
-5. Be professional and prioritize security findings over general conversation.`;
+      if (assets.length > 0) {
+        dbContextText += "#### Assets/Hosts Info:\n";
+        assets.forEach((a: any) => {
+          dbContextText += `- ${a.name || 'Asset'} (IP: ${a.internalIp || a.externalIp || 'N/A'}, OS: ${a.os || 'Unknown'}, Type: ${a.type || 'Host'}, Score: ${a.overallScore || 100})\n`;
+          if (a.vulnerabilities && a.vulnerabilities.length > 0) {
+            a.vulnerabilities.forEach((v: any) => {
+              dbContextText += `  * Vulnerability: [${v.severity || 'Medium'}] ${v.id || v.title} - ${v.title || ''} (CVSS: ${v.cvss || 'N/A'})\n`;
+            });
+          }
+        });
+        dbContextText += "\n";
+      }
 
-    console.log(`>>> ENGAGING AI ANALYST FOR TARGET: [${targetId}]`);
+      if (ports.length > 0) {
+        dbContextText += "#### Open Ports & Services mapped to devices:\n";
+        ports.forEach((p: any) => {
+          dbContextText += `- Target IP: ${p.targetIP || 'N/A'}, Port: ${p.port || p.portNumber}/${p.protocol}, Service: ${p.service || 'N/A'}, State: ${p.state || 'open'}\n`;
+        });
+        dbContextText += "\n";
+      }
 
-    // Proxy to your backend's intelligence analysis endpoint
-    const agentResponse = await fetch("http://127.0.0.1:8000/api/ollama/chat", {
+      if (services.length > 0) {
+        dbContextText += "#### Detected Services:\n";
+        services.forEach((s: any) => {
+          dbContextText += `- Service Name: ${s.name}, Version: ${s.version || 'Detected'}, Risk: ${s.riskScore || 'Low'}, Port: ${s.port || 'N/A'}\n`;
+        });
+        dbContextText += "\n";
+      }
+
+    } catch (dbError) {
+      console.error("Failed to query MongoDB context for agent:", dbError);
+      // Continue without DB context if MongoDB fails
+      dbContextText = "System Context: Unable to fetch live database context due to a database connection issue.\n\n";
+    }
+
+    // Assemble the prompt sent to the LangGraph agent
+    const enrichedPrompt = `[CONTEXT]
+${dbContextText}
+[END CONTEXT]
+
+User Request: ${prompt}`;
+
+    console.log(`>>> PROXYING ENRICHED CHAT PROMPT TO LOCALHOST:8000/api/chat (Thread: ${threadId || 'new'})`);
+
+    // Proxy to the Python LangGraph backend endpoint
+    const agentResponse = await fetch("http://localhost:8000/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        prompt,
-        system_prompt: SYSTEM_PROMPT,
-        target_id: targetId,
-        context: context
+        prompt: enrichedPrompt,
+        thread_id: threadId || undefined
       })
     });
 
     if (!agentResponse.ok) {
-      throw new Error(`Agent backend responded with status: ${agentResponse.status}`);
+      const errorText = await agentResponse.text();
+      throw new Error(`Agent backend responded with status: ${agentResponse.status} - ${errorText}`);
     }
 
     const data = await agentResponse.json();
 
-    // Return the AI's response to the frontend
+    // Return the response and the thread_id
     return NextResponse.json({
-      response: data.response || data.text || "I've analyzed the current discovery data, but couldn't formulate a specific response."
+      response: data.response || "The agent did not return a valid response.",
+      threadId: data.thread_id
     });
 
   } catch (error: any) {
     console.error("Agent chat execution failed:", error);
     return NextResponse.json(
-      { error: "Failed to process intelligence query" },
+      { error: error.message || "Failed to process intelligence query" },
       { status: 500 }
     );
   }

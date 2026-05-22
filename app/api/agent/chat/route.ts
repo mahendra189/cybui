@@ -75,8 +75,8 @@ export async function POST(request: Request) {
     }
 
     // Assemble the prompt sent to the LangGraph agent
-    const enrichedPrompt = `[CONTEXT]
-${dbContextText}
+    const enrichedPrompt = `You are a security agent with this [CONTEXT] also check if there's any vulnerability which you can conclude by this data if any let the user know about it
+${dbContextText} and
 [END CONTEXT]
 
 User Request: ${prompt}`;
@@ -101,6 +101,8 @@ User Request: ${prompt}`;
     }
 
     const data = await agentResponse.json();
+    console.log(data.response)
+    console.log(prompt)
 
     // Return the response and the thread_id
     return NextResponse.json({

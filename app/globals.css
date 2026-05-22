@@ -127,3 +127,20 @@
     @apply font-sans;
     }
 }
+
+@layer utilities {
+  @keyframes threat-pulse {
+    0%, 100% {
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.4), inset 0 0 5px rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.6);
+    }
+    50% {
+      box-shadow: 0 0 22px rgba(239, 68, 68, 0.85), inset 0 0 10px rgba(239, 68, 68, 0.4);
+      border-color: rgba(239, 68, 68, 1);
+    }
+  }
+
+  .animate-threat-glow {
+    animation: threat-pulse 2s infinite ease-in-out;
+  }
+}

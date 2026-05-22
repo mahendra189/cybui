@@ -77,7 +77,7 @@ export async function POST() {
 
           // Create services from ports
           const serviceDocs = portDocs
-            .map(p => ({
+            .map((p: any) => ({
               targetId: String(target._id),
               targetIP: target.ip,
               name: p.service,
@@ -87,7 +87,7 @@ export async function POST() {
               riskScore: getRiskScore(p.service),
               discoveredAt: new Date()
             }))
-            .filter((s, idx, arr) => arr.findIndex(x => x.name === s.name && x.port === s.port) === idx);
+            .filter((s: any, idx: number, arr: any[]) => arr.findIndex((x: any) => x.name === s.name && x.port === s.port) === idx);
 
           await servicesCol.deleteMany({ targetId: String(target._id) });
           if (serviceDocs.length > 0) {

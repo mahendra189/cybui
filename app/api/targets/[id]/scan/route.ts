@@ -122,7 +122,7 @@ export async function POST(
 
     // Insert new ports
     if (openPorts.length > 0) {
-      const portDocs = openPorts.map(p => ({
+      const portDocs = openPorts.map((p: any) => ({
         targetId: String(target._id),
         targetIP: targetIP,
         port: String(p.port),
@@ -135,8 +135,8 @@ export async function POST(
 
       // Create services from ports
       const serviceDocs = openPorts
-        .filter((p, idx, arr) => arr.findIndex(x => x.port === p.port && x.service === p.service) === idx)
-        .map(p => ({
+        .filter((p: any, idx: number, arr: any[]) => arr.findIndex((x: any) => x.port === p.port && x.service === p.service) === idx)
+        .map((p: any) => ({
           targetId: String(target._id),
           targetIP: targetIP,
           name: p.service,
@@ -154,7 +154,7 @@ export async function POST(
     // Update target with scan results
     await db.collection('targets').updateOne(query, {
       $set: {
-        open_ports: openPorts.map(p => ({ port: p.port, protocol: p.protocol, service: p.service })),
+        open_ports: openPorts.map((p: any) => ({ port: p.port, protocol: p.protocol, service: p.service })),
         port_scan_status: 'completed',
         port_scan_completed: new Date(),
         port_scan_count: (target.port_scan_count || 0) + 1
